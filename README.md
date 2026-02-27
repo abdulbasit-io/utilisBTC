@@ -1,76 +1,81 @@
-# HodlLend — HODL Your Bitcoin, Unlock Its Value
+# HodlLend
 
-> **BTC-Collateralized Lending on Bitcoin Layer 1 — Powered by OP_NET**
+> **Bitcoin-Collateralized Lending on Layer 1 — Powered by OP_NET**
 
-HodlLend is a trustless peer-to-peer lending protocol built on Bitcoin L1 using OP_NET. Lock your BTC as collateral to borrow USDT, or lend your surplus USDT to earn interest — all without intermediaries.
+Borrow stablecoins against your BTC. Lend USDT and earn yield. No banks. No bridges. Just Bitcoin.
 
-## 📸 Demo
-
-### Landing Page
-![Landing Page](docs/screenshots/landing-page.png)
-
-### Borrower Dashboard
-Lock BTC as collateral, create loan requests, track active loans, and repay to unlock your Bitcoin.
-
-![Borrower Dashboard](docs/screenshots/borrower-dashboard.png)
-
-### Create Loan Request
-Real-time calculation of collateral ratio, interest, platform fee, and total repayment.
-
-![Create Loan Modal](docs/screenshots/create-loan-modal.png)
-
-### Lender Dashboard
-Browse the loan marketplace, fund BTC-backed loans, and track your investments.
-
-![Lender Dashboard](docs/screenshots/lender-dashboard.png)
-
-### Fund a Loan
-Review loan details, collateral protection, and expected returns before committing.
-
-![Fund Loan Modal](docs/screenshots/fund-loan-modal.png)
+🌐 **Live:** [hodllend.vercel.app](https://hodllend.vercel.app)  
+📜 **Contract:** `opt1sqrpxenjta0hgpdzr32jc6gucr3llwv6scvn0p5ha` (OP_NET Testnet)
 
 ---
 
-## 🔥 Features
-### For Borrowers
-- **Lock BTC as collateral** — keep your Bitcoin position while accessing liquidity
-- **Borrow USDT** — get stablecoins at market rates with flexible durations (7–365 days)
-- **Repay & unlock** — pay back principal + interest to retrieve your Bitcoin
-- **Real-time calculations** — see collateral ratio, interest, and total repayment instantly
+## What is HodlLend?
 
-### For Lenders
-- **Browse loan marketplace** — find BTC-backed lending opportunities
-- **Earn interest** — supply USDT and earn returns backed by Bitcoin collateral
-- **Liquidation protection** — if borrowers default, claim their BTC collateral
-- **Track investments** — monitor active loans, expected returns, and time remaining
+HodlLend is a trustless peer-to-peer lending protocol on Bitcoin L1. Lock BTC as collateral to borrow USDT, or lend surplus USDT to earn interest — all settling on-chain through OP_NET smart contracts.
 
-### Platform
-- 150% minimum collateralization ratio
-- 2% platform fee on interest earned
-- Simple interest calculation  
-- OPWallet integration
-- Dark mode with premium Bitcoin-native design
+**For Borrowers** — Need cash but don't want to sell your Bitcoin? Lock it as collateral and borrow stablecoins. Repay + interest to get your BTC back.
 
-## 🛠️ Tech Stack
+**For Lenders** — Put idle USDT to work. Fund BTC-backed loans and earn interest. If borrowers default, you claim their collateral.
 
-- **Frontend:** React 18 + Vite
-- **Styling:** Vanilla CSS (custom design system)
-- **State:** React Context + localStorage
-- **Wallet:** OPWallet browser extension
-- **Network:** OP_NET Bitcoin L1 (testnet)
+## Features
 
-## 🚀 Getting Started
+- 🔒 **150% overcollateralized** — every loan backed by real BTC
+- ⛓️ **Bitcoin L1 native** — settles directly on Bitcoin via OP_NET
+- 🤝 **Peer-to-peer** — no intermediary holds your funds
+- 🔓 **Non-custodial** — smart contracts hold collateral, not a company
+- 📊 **Flexible terms** — 7 to 365 day durations, custom interest rates
+- 💰 **2% platform fee** on interest earned
+
+## Smart Contract
+
+The lending contract is written in **AssemblyScript**, compiled to **WebAssembly**, and deployed on OP_NET testnet. It extends the OP20 token standard.
+
+| Method | Description |
+|--------|-------------|
+| `createLoan` | Borrower creates a loan request (collateral, amount, duration, rate) |
+| `fundLoan` | Lender funds a pending loan |
+| `repayLoan` | Borrower repays and unlocks collateral |
+| `liquidateLoan` | Lender seizes collateral after loan expires |
+| `cancelLoan` | Borrower cancels an unfunded loan |
+| `getLoan` | Read loan details |
+| `getLoanCount` | Get total number of loans |
+
+### Build the Contract
+
+```bash
+cd contract
+npm install
+npm run build:lending
+# Output: contract/build/HodlLend.wasm
+```
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Frontend | React 18 + Vite |
+| Styling | Vanilla CSS (custom design system) |
+| Smart Contract | AssemblyScript → WASM (OP_NET) |
+| Wallet | OPWallet browser extension |
+| Network | OP_NET Bitcoin L1 (testnet) |
+| Deployment | Vercel |
+
+## Getting Started
 
 ### Prerequisites
-- Node.js 18+ 
+- Node.js 18+
 - [OPWallet](https://chromewebstore.google.com/detail/opwallet/pmbjpcmaaladnfpacpmhmnfmpklgbdjb) browser extension
 - Test BTC from [faucet.opnet.org](https://faucet.opnet.org)
 
 ### Install & Run
 
 ```bash
-# Install dependencies
+# Install frontend dependencies
 npm install
+
+# Create .env with contract address
+cp .env.example .env
+# Edit .env and add your deployed contract address
 
 # Start dev server
 npm run dev
@@ -78,60 +83,63 @@ npm run dev
 
 Open [http://localhost:5173](http://localhost:5173) in your browser.
 
-### Build for Production
+### Environment Variables
 
-```bash
-npm run build
-npm run preview
+| Variable | Description |
+|----------|-------------|
+| `VITE_HODLLEND_CONTRACT` | Deployed HodlLend contract address |
+| `VITE_USDT_TOKEN` | USDT token contract address (optional) |
+
+## Project Structure
+
+```
+├── contract/                    # Smart contract (AssemblyScript)
+│   ├── src/lending/
+│   │   ├── HodlLend.ts         # Lending contract
+│   │   └── index.ts            # Entry point
+│   ├── build/HodlLend.wasm     # Compiled contract
+│   └── abis/HodlLend.abi.json  # Generated ABI
+├── src/                         # Frontend (React)
+│   ├── App.jsx                  # Routes & layout
+│   ├── index.css                # Design system
+│   ├── components/
+│   │   ├── Hero.jsx             # Landing hero
+│   │   ├── Stats.jsx            # Why HodlLend section
+│   │   ├── HowItWorks.jsx      # Feature explainer
+│   │   ├── CTASection.jsx       # Bottom call-to-action
+│   │   ├── BorrowerDashboard.jsx
+│   │   ├── LenderDashboard.jsx
+│   │   ├── CreateLoanModal.jsx
+│   │   ├── LendModal.jsx
+│   │   └── WalletButton.jsx
+│   ├── context/
+│   │   └── WalletContext.jsx    # OPWallet integration
+│   └── utils/
+│       ├── constants.js         # Config & params
+│       ├── opnetProvider.js     # OP_NET RPC provider
+│       ├── formatters.js        # Formatting utilities
+│       └── lendingEngine.js     # Lending simulation
+├── .env.example                 # Environment template
+└── vercel.json                  # SPA routing config
 ```
 
-## 📖 How It Works
+## How It Works
 
-1. **Connect** your OPWallet
+1. **Connect** your OPWallet (testnet)
 2. **Choose your role:**
    - 🏦 **Borrower** — Lock BTC → Borrow USDT → Repay to unlock
    - 💰 **Lender** — Browse requests → Fund loans → Earn interest
-3. **Trustless settlement** — all contract logic settles on Bitcoin L1
+3. **On-chain settlement** — all logic executes via the deployed smart contract
 
-## 📁 Project Structure
+## Links
 
-```
-src/
-├── main.jsx                    # Entry point
-├── App.jsx                     # Routes & layout
-├── index.css                   # Design system
-├── components/
-│   ├── Navbar.jsx              # Navigation + wallet
-│   ├── Hero.jsx                # Landing hero
-│   ├── HowItWorks.jsx          # Feature explainer
-│   ├── Stats.jsx               # Platform statistics
-│   ├── Footer.jsx              # Footer with links
-│   ├── WalletButton.jsx        # OPWallet connect
-│   ├── LoanCard.jsx            # Loan display card
-│   ├── CreateLoanModal.jsx     # Borrower: create loan
-│   ├── LendModal.jsx           # Lender: fund loan
-│   ├── BorrowerDashboard.jsx   # Borrower view
-│   └── LenderDashboard.jsx     # Lender view
-├── context/
-│   └── WalletContext.jsx       # Wallet state
-└── utils/
-    ├── constants.js            # Config & params
-    ├── formatters.js           # Number/date formatting
-    └── lendingEngine.js        # Lending simulation
-```
+- [OP_NET](https://opnet.org) · [Developer Docs](https://docs.opnet.org) · [OPWallet](https://chromewebstore.google.com/detail/opwallet/pmbjpcmaaladnfpacpmhmnfmpklgbdjb)
+- [Discord](https://discord.com/invite/opnet) · [Telegram](https://t.me/opnetbtc) · [Twitter](https://x.com/opnetbtc)
 
-## 🔗 Links
-
-- [OP_NET](https://opnet.org)
-- [Developer Docs](https://docs.opnet.org)
-- [OPWallet](https://chromewebstore.google.com/detail/opwallet/pmbjpcmaaladnfpacpmhmnfmpklgbdjb)
-- [Discord](https://discord.com/invite/opnet)
-- [Telegram](https://t.me/opnetbtc)
-
-## 📄 License
+## License
 
 MIT
 
 ---
 
-**#opnetvibecode** · Built with ❤️ on Bitcoin L1 · Powered by OP_NET
+**#opnetvibecode** · Built on Bitcoin L1 · Powered by OP_NET
