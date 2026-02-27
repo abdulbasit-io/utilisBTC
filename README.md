@@ -4,7 +4,7 @@
 
 Borrow stablecoins against your BTC. Lend USDT and earn yield. No banks. No bridges. Just Bitcoin.
 
-🌐 **Live:** [utilisbtc.vercel.app](https://utilisbtc.vercel.app)  
+🌐 **Live:** [utilis-btc.vercel.app](https://utilis-btc.vercel.app)  
 📜 **Contract:** `opt1sqrpxenjta0hgpdzr32jc6gucr3llwv6scvn0p5ha` (OP_NET Testnet)
 
 ## Demo
