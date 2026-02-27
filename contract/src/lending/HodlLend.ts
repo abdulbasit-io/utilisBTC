@@ -113,7 +113,7 @@ export class HodlLend extends OP20 {
     public createLoan(calldata: Calldata): BytesWriter {
         const collateral: u256 = calldata.readU256();
         const loanAmount: u256 = calldata.readU256();
-        const durationDays: u256 = calldata.readU256();
+        const durationDaare you donw with that? This is the deployed contract address: "opt1sqrpxenjta0hgpdzr32jc6gucr3llwv6scvn0p5ha", update the codebase as necessary but make sure the address is in a .env file that will not be commited or push. after you're done with that, we have some fixing to do on the frontendys: u256 = calldata.readU256();
         const interestBps: u256 = calldata.readU256();
 
         // Validate

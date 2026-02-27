@@ -1,34 +1,42 @@
-import { getPlatformStats, getBTCPrice } from '../utils/lendingEngine';
-import { formatBTC, formatUSD, formatCompact } from '../utils/formatters';
+import { Link } from 'react-router-dom';
 
-export default function Stats() {
-  const stats = getPlatformStats();
-  const btcPrice = getBTCPrice();
-
-  const items = [
+export default function WhyHodlLend() {
+  const features = [
     {
-      label: 'Total Value Locked',
-      value: formatBTC(stats.totalValueLocked),
-      subtext: formatUSD(stats.totalValueLocked * btcPrice),
-      icon: '🔒',
-    },
-    {
-      label: 'Active Loans',
-      value: stats.totalLoansIssued,
-      subtext: 'Across all markets',
-      icon: '📊',
-    },
-    {
-      label: 'Interest Earned',
-      value: `${formatCompact(stats.totalInterestEarned)} USDT`,
-      subtext: 'Total platform earnings',
       icon: '💎',
+      title: "Don't Sell. Borrow.",
+      desc: 'Keep your long-term BTC position. Access cash without giving up your coins.',
+      accent: 'var(--color-accent)',
     },
     {
-      label: 'BTC Price',
-      value: formatUSD(btcPrice),
-      subtext: 'Mock Oracle Feed',
-      icon: '📡',
+      icon: '🛡️',
+      title: 'Overcollateralized',
+      desc: 'Every loan backed by 150%+ in real Bitcoin. Not promises — actual BTC.',
+      accent: 'var(--color-success)',
+    },
+    {
+      icon: '⛓️',
+      title: 'Bitcoin L1 Native',
+      desc: "No bridges. No sidechains. Settles directly on Bitcoin through OP_NET.",
+      accent: '#60a5fa',
+    },
+    {
+      icon: '🤝',
+      title: 'Peer-to-Peer',
+      desc: 'Connect with counterparties directly. No intermediary holds your funds.',
+      accent: '#c084fc',
+    },
+    {
+      icon: '📊',
+      title: 'Earn Real Yield',
+      desc: "Lend USDT, earn interest. If borrowers default — you get their BTC.",
+      accent: '#fbbf24',
+    },
+    {
+      icon: '🔓',
+      title: 'Non-Custodial',
+      desc: "Your keys, your Bitcoin. Smart contracts hold collateral, not a company.",
+      accent: '#f472b6',
     },
   ];
 
@@ -36,23 +44,47 @@ export default function Stats() {
     <section className="section">
       <div className="container">
         <div className="section-header">
-          <p className="section-label">Platform Stats</p>
-          <h2 className="section-title">Trustless lending in numbers</h2>
+          <p className="section-label">Why HodlLend</p>
+          <h2 className="section-title">Bitcoin was never meant to sit idle.</h2>
+          <p className="section-subtitle">
+            Unlock liquidity without giving up ownership.
+          </p>
         </div>
 
         <div className="stats-grid">
-          {items.map((item, i) => (
-            <div key={i} className="glass-card stat-card animate-slide-up" style={{ animationDelay: `${i * 80}ms` }}>
-              <div style={{ fontSize: '1.5rem', marginBottom: 'var(--space-3)' }}>{item.icon}</div>
-              <div className="stat-label">{item.label}</div>
-              <div className="stat-value">{item.value}</div>
-              <div style={{
-                fontSize: 'var(--font-size-xs)',
-                color: 'var(--color-text-muted)',
-                marginTop: 'var(--space-1)',
+          {features.map((item, i) => (
+            <div 
+              key={i} 
+              className="glass-card stat-card animate-slide-up" 
+              style={{ 
+                animationDelay: `${i * 80}ms`,
+                textAlign: 'left',
+                padding: 'var(--space-6)',
+                borderTop: `3px solid ${item.accent}`,
+              }}
+            >
+              <div style={{ 
+                fontSize: '1.75rem', 
+                marginBottom: 'var(--space-3)',
               }}>
-                {item.subtext}
+                {item.icon}
               </div>
+              <h3 style={{ 
+                fontSize: 'var(--font-size-lg)', 
+                fontWeight: 700,
+                color: 'var(--color-text-primary)',
+                marginBottom: 'var(--space-2)',
+              }}>
+                {item.title}
+              </h3>
+              <p style={{
+                fontSize: 'var(--font-size-sm)',
+                color: 'var(--color-text-secondary)',
+                lineHeight: '1.6',
+                margin: 0,
+              }}>
+                {item.desc}
+              </p>
             </div>
           ))}
         </div>
