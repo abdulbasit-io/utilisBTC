@@ -49,7 +49,7 @@ export const CONTRACTS = {
 export const LINKS = {
   OPNET: 'https://opnet.org',
   DOCS: 'https://docs.opnet.org',
-  GITHUB: 'https://github.com/btc-vision',
+  GITHUB: 'https://github.com/abdulbasit-io/HodlLend',
   OPWALLET: 'https://chromewebstore.google.com/detail/opwallet/pmbjpcmaaladnfpacpmhmnfmpklgbdjb',
   DISCORD: 'https://discord.com/invite/opnet',
   TELEGRAM: 'https://t.me/opnetbtc',
