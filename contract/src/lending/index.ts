@@ -1,10 +1,10 @@
 import { Blockchain } from '@btc-vision/btc-runtime/runtime';
 import { revertOnError } from '@btc-vision/btc-runtime/runtime/abort/abort';
-import { HodlLend } from './HodlLend';
+import { utilisBTC } from './utilisBTC';
 
 // DO NOT TOUCH TO THIS.
-Blockchain.contract = (): HodlLend => {
-    return new HodlLend();
+Blockchain.contract = (): utilisBTC => {
+    return new utilisBTC();
 };
 
 // VERY IMPORTANT

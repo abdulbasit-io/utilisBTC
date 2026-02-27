@@ -1,12 +1,12 @@
 {
-    "name": "hodllend-contract",
+    "name": "utilisbtc-contract",
     "version": "1.0.0",
-    "description": "HodlLend - BTC-Collateralized Lending Smart Contract for OP_NET",
+    "description": "utilisBTC - BTC-Collateralized Lending Smart Contract for OP_NET",
     "main": "index.js",
     "scripts": {
         "build:lending": "asc src/lending/index.ts --target lending --measure --uncheckedBehavior never"
     },
-    "author": "HodlLend",
+    "author": "utilisBTC",
     "license": "MIT",
     "type": "module",
     "dependencies": {

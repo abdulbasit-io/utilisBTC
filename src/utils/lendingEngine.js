@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════
-// HodlLend Lending Engine (Simulation)
+// utilisBTC Lending Engine (Simulation)
 // ═══════════════════════════════════════════════════════════
 // This engine simulates on-chain lending logic using localStorage.
 // Architecture is designed to plug into a real OP_NET smart contract.
@@ -12,8 +12,8 @@ import {
 } from './constants';
 import { calcInterest, generateId, generateMockTxHash } from './formatters';
 
-const STORAGE_KEY = 'hodllend_loans';
-const PLATFORM_STATS_KEY = 'hodllend_stats';
+const STORAGE_KEY = 'utilisbtc_loans';
+const PLATFORM_STATS_KEY = 'utilisbtc_stats';
 
 // ── Loan Storage ────────────────────────────────────────
 

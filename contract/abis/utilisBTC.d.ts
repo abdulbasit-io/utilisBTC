@@ -89,9 +89,9 @@ export type GetLoanCount = CallResult<
 >;
 
 // ------------------------------------------------------------------
-// IHodlLend
+// IutilisBTC
 // ------------------------------------------------------------------
-export interface IHodlLend extends IOP_NETContract {
+export interface IutilisBTC extends IOP_NETContract {
     createLoan(
         collateralSats: bigint,
         loanAmount: bigint,

@@ -7,7 +7,7 @@ export default function Footer() {
         <div className="footer-brand">
           <div className="footer-logo-icon">₿</div>
           <span className="footer-text">
-            HodlLend · Built on Bitcoin L1 · Powered by{' '}
+            utilisBTC · Built on Bitcoin L1 · Powered by{' '}
             <a href={LINKS.OPNET} target="_blank" rel="noopener noreferrer">OP_NET</a>
           </span>
         </div>

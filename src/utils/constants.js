@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════
-// HodlLend Constants & Configuration
+// utilisBTC Constants & Configuration
 // ═══════════════════════════════════════════════════════════
 
 // Network config — OP_NET testnet for deployment
@@ -48,7 +48,7 @@ export const STATUS_CONFIG = {
 
 // Contract addresses (loaded from .env — not committed to git)
 export const CONTRACTS = {
-  HODLLEND: import.meta.env.VITE_HODLLEND_CONTRACT || '',
+  UTILISBTC: import.meta.env.VITE_UTILISBTC_CONTRACT || '',
   USDT_TOKEN: import.meta.env.VITE_USDT_TOKEN || '',
 };
 
@@ -56,7 +56,7 @@ export const CONTRACTS = {
 export const LINKS = {
   OPNET: 'https://opnet.org',
   DOCS: 'https://docs.opnet.org',
-  GITHUB: 'https://github.com/abdulbasit-io/HodlLend',
+  GITHUB: 'https://github.com/abdulbasit-io/utilisBTC',
   OPWALLET: 'https://chromewebstore.google.com/detail/opwallet/pmbjpcmaaladnfpacpmhmnfmpklgbdjb',
   DISCORD: 'https://discord.com/invite/opnet',
   TELEGRAM: 'https://t.me/opnetbtc',

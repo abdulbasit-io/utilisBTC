@@ -1,8 +1,8 @@
 import { ABIDataTypes, BitcoinAbiTypes, OP_NET_ABI } from 'opnet';
 
-export const HodlLendEvents = [];
+export const utilisBTCEvents = [];
 
-export const HodlLendAbi = [
+export const utilisBTCAbi = [
     {
         name: 'createLoan',
         inputs: [
@@ -61,8 +61,8 @@ export const HodlLendAbi = [
         outputs: [{ name: 'count', type: ABIDataTypes.UINT256 }],
         type: BitcoinAbiTypes.Function,
     },
-    ...HodlLendEvents,
+    ...utilisBTCEvents,
     ...OP_NET_ABI,
 ];
 
-export default HodlLendAbi;
+export default utilisBTCAbi;

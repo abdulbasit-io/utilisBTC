@@ -56,7 +56,7 @@ export function WalletProvider({ children }) {
 
   // Check for saved session on mount
   useEffect(() => {
-    const saved = localStorage.getItem('hodllend_wallet');
+    const saved = localStorage.getItem('utilisbtc_wallet');
     if (saved) {
       try {
         const data = JSON.parse(saved);
@@ -72,7 +72,7 @@ export function WalletProvider({ children }) {
           fetchOnChainBalance(data.address);
         }
       } catch {
-        localStorage.removeItem('hodllend_wallet');
+        localStorage.removeItem('utilisbtc_wallet');
       }
     }
   }, [fetchOnChainBalance, updateLockedBalance]);
@@ -116,7 +116,7 @@ export function WalletProvider({ children }) {
         setWalletType('opwallet');
         updateLockedBalance(addr);
 
-        localStorage.setItem('hodllend_wallet', JSON.stringify({
+        localStorage.setItem('utilisbtc_wallet', JSON.stringify({
           address: addr,
           btcBalance: btcBal,
           usdtBalance: 10000,
@@ -141,7 +141,7 @@ export function WalletProvider({ children }) {
     setLockedBalance(0);
     setUsdtBalance(0);
     setWalletType('none');
-    localStorage.removeItem('hodllend_wallet');
+    localStorage.removeItem('utilisbtc_wallet');
   }, []);
 
   // Refresh balance + locked amounts
@@ -219,7 +219,7 @@ export function WalletProvider({ children }) {
                 lineHeight: 1.6,
                 marginBottom: 'var(--space-6)',
               }}>
-                HodlLend requires <strong style={{ color: 'var(--color-accent)' }}>OPWallet</strong> to interact with the Bitcoin L1 network. Install the browser extension to get started.
+                utilisBTC requires <strong style={{ color: 'var(--color-accent)' }}>OPWallet</strong> to interact with the Bitcoin L1 network. Install the browser extension to get started.
               </p>
               <a 
                 href={LINKS.OPWALLET} 

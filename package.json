@@ -1,9 +1,9 @@
 {
-  "name": "hodllend",
+  "name": "utilisbtc",
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "HodlLend — BTC-Collateralized Lending on Bitcoin L1. Lock BTC, borrow USDT. Lend USDT, earn interest. All on OP_NET.",
+  "description": "utilisBTC — BTC-Collateralized Lending on Bitcoin L1. Lock BTC, borrow USDT. Lend USDT, earn interest. All on OP_NET.",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

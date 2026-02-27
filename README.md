@@ -1,10 +1,10 @@
-# HodlLend
+# utilisBTC
 
 > **Bitcoin-Collateralized Lending on Layer 1 — Powered by OP_NET**
 
 Borrow stablecoins against your BTC. Lend USDT and earn yield. No banks. No bridges. Just Bitcoin.
 
-🌐 **Live:** [hodllend.vercel.app](https://hodllend.vercel.app)  
+🌐 **Live:** [utilisbtc.vercel.app](https://utilisbtc.vercel.app)  
 📜 **Contract:** `opt1sqrpxenjta0hgpdzr32jc6gucr3llwv6scvn0p5ha` (OP_NET Testnet)
 
 ## Demo
@@ -12,8 +12,8 @@ Borrow stablecoins against your BTC. Lend USDT and earn yield. No banks. No brid
 ### Landing Page
 ![Landing Page](docs/screenshots/landing-hero.png)
 
-### Why HodlLend
-![Why HodlLend](docs/screenshots/why-hodllend.png)
+### Why utilisBTC
+![Why utilisBTC](docs/screenshots/why-utilisbtc.png)
 
 ### Borrower Dashboard
 ![Borrower Dashboard](docs/screenshots/borrower-dashboard.png)
@@ -23,9 +23,9 @@ Borrow stablecoins against your BTC. Lend USDT and earn yield. No banks. No brid
 
 ---
 
-## What is HodlLend?
+## What is utilisBTC?
 
-HodlLend is a trustless peer-to-peer lending protocol on Bitcoin L1. Lock BTC as collateral to borrow USDT, or lend surplus USDT to earn interest — all settling on-chain through OP_NET smart contracts.
+utilisBTC is a trustless peer-to-peer lending protocol on Bitcoin L1. Lock BTC as collateral to borrow USDT, or lend surplus USDT to earn interest — all settling on-chain through OP_NET smart contracts.
 
 **For Borrowers** — Need cash but don't want to sell your Bitcoin? Lock it as collateral and borrow stablecoins. Repay + interest to get your BTC back.
 
@@ -60,7 +60,7 @@ The lending contract is written in **AssemblyScript**, compiled to **WebAssembly
 cd contract
 npm install
 npm run build:lending
-# Output: contract/build/HodlLend.wasm
+# Output: contract/build/utilisBTC.wasm
 ```
 
 ## Tech Stack
@@ -101,7 +101,7 @@ Open [http://localhost:5173](http://localhost:5173) in your browser.
 
 | Variable | Description |
 |----------|-------------|
-| `VITE_HODLLEND_CONTRACT` | Deployed HodlLend contract address |
+| `VITE_UTILISBTC_CONTRACT` | Deployed utilisBTC contract address |
 | `VITE_USDT_TOKEN` | USDT token contract address (optional) |
 
 ## Project Structure
@@ -109,16 +109,16 @@ Open [http://localhost:5173](http://localhost:5173) in your browser.
 ```
 ├── contract/                    # Smart contract (AssemblyScript)
 │   ├── src/lending/
-│   │   ├── HodlLend.ts         # Lending contract
+│   │   ├── utilisBTC.ts         # Lending contract
 │   │   └── index.ts            # Entry point
-│   ├── build/HodlLend.wasm     # Compiled contract
-│   └── abis/HodlLend.abi.json  # Generated ABI
+│   ├── build/utilisBTC.wasm     # Compiled contract
+│   └── abis/utilisBTC.abi.json  # Generated ABI
 ├── src/                         # Frontend (React)
 │   ├── App.jsx                  # Routes & layout
 │   ├── index.css                # Design system
 │   ├── components/
 │   │   ├── Hero.jsx             # Landing hero
-│   │   ├── Stats.jsx            # Why HodlLend section
+│   │   ├── Stats.jsx            # Why utilisBTC section
 │   │   ├── HowItWorks.jsx      # Feature explainer
 │   │   ├── CTASection.jsx       # Bottom call-to-action
 │   │   ├── BorrowerDashboard.jsx

@@ -2,7 +2,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { WalletProvider } from './context/WalletContext';
 import Navbar from './components/Navbar';
 import Hero from './components/Hero';
-import WhyHodlLend from './components/Stats';
+import WhyutilisBTC from './components/Stats';
 import HowItWorks from './components/HowItWorks';
 import CTASection from './components/CTASection';
 import Footer from './components/Footer';
@@ -13,7 +13,7 @@ function LandingPage() {
   return (
     <>
       <Hero />
-      <WhyHodlLend />
+      <WhyutilisBTC />
       <HowItWorks />
       <CTASection />
     </>

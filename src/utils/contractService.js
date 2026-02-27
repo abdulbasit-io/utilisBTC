@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════
-// HodlLend On-Chain Contract Service
+// utilisBTC On-Chain Contract Service
 // ═══════════════════════════════════════════════════════════
 // Hybrid approach: tries on-chain calls first, falls back to localStorage.
 // This ensures the demo always works while showcasing real chain interaction.
@@ -7,7 +7,7 @@
 import { getContract, JSONRpcProvider } from 'opnet';
 import { networks } from '@btc-vision/bitcoin';
 import { CONTRACTS, NETWORK, RPC_URL, CONTRACT_STATUS_MAP } from './constants';
-import HodlLendABI from '../../contract/abis/HodlLend.abi.json';
+import utilisBTCABI from '../../contract/abis/utilisBTC.abi.json';
 
 // ── Provider & Contract Instance ────────────────────────
 
@@ -31,12 +31,12 @@ function getProviderInstance() {
 
 function getContractInstance(senderAddress) {
   const prov = getProviderInstance();
-  if (!prov || !CONTRACTS.HODLLEND) return null;
+  if (!prov || !CONTRACTS.UTILISBTC) return null;
 
   try {
     contract = getContract(
-      CONTRACTS.HODLLEND,
-      HodlLendABI,
+      CONTRACTS.UTILISBTC,
+      utilisBTCABI,
       prov,
       getNetworkConfig(),
       senderAddress || undefined
@@ -159,7 +159,7 @@ async function sendViaOPWallet(methodName, args, senderAddress) {
   try {
     // OPWallet's signInteraction API
     const result = await window.opnet.signInteraction({
-      to: CONTRACTS.HODLLEND,
+      to: CONTRACTS.UTILISBTC,
       calldata: calldata.toString('hex'),
     });
 
@@ -247,5 +247,5 @@ export async function isContractAvailable() {
  * Get contract address
  */
 export function getContractAddress() {
-  return CONTRACTS.HODLLEND || null;
+  return CONTRACTS.UTILISBTC || null;
 }

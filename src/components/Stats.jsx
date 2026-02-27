@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 
-export default function WhyHodlLend() {
+export default function WhyutilisBTC() {
   const features = [
     {
       icon: '💎',
@@ -44,7 +44,7 @@ export default function WhyHodlLend() {
     <section className="section">
       <div className="container">
         <div className="section-header">
-          <p className="section-label">Why HodlLend</p>
+          <p className="section-label">Why utilisBTC</p>
           <h2 className="section-title">Bitcoin was never meant to sit idle.</h2>
           <p className="section-subtitle">
             Unlock liquidity without giving up ownership.

@@ -13,7 +13,7 @@ import {
 import { EMPTY_POINTER } from '@btc-vision/btc-runtime/runtime/math/bytes';
 
 // ═══════════════════════════════════════════════════════════
-// HodlLend — BTC-Collateralized Lending Smart Contract
+// utilisBTC — BTC-Collateralized Lending Smart Contract
 // ═══════════════════════════════════════════════════════════
 //
 // Extends OP20 to create a peer-to-peer lending protocol.
@@ -56,7 +56,7 @@ const PLATFORM_FEE_BPS: u256 = u256.fromU64(200);  // 2%
 const BLOCKS_PER_DAY: u256 = u256.fromU64(144);     // ~144 Bitcoin blocks per day
 
 @final
-export class HodlLend extends OP20 {
+export class utilisBTC extends OP20 {
     private loanCounter: StoredU256;
     private platformFees: StoredU256;
 
@@ -71,7 +71,7 @@ export class HodlLend extends OP20 {
     public override onDeployment(_calldata: Calldata): void {
         const maxSupply: u256 = u256.fromString('10000000000000000'); // 100M with 8 decimals
         const decimals: u8 = 8;
-        const name: string = 'HodlLend';
+        const name: string = 'utilisBTC';
         const symbol: string = 'HODL';
 
         this.instantiate(new OP20InitParameters(maxSupply, decimals, name, symbol));

@@ -18,7 +18,7 @@ export default function HowItWorks() {
           <p className="section-label">How It Works</p>
           <h2 className="section-title">Two sides. One protocol.</h2>
           <p className="section-subtitle">
-            Whether you need liquidity or want to earn yield — HodlLend has you covered.
+            Whether you need liquidity or want to earn yield — utilisBTC has you covered.
           </p>
         </div>
 

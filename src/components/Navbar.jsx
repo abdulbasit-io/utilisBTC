@@ -11,7 +11,7 @@ export default function Navbar() {
       <div className="navbar-inner">
         <Link to="/" className="navbar-logo">
           <div className="navbar-logo-icon">₿</div>
-          <span>HodlLend</span>
+          <span>utilisBTC</span>
         </Link>
 
         <div className="navbar-links">
