@@ -3,10 +3,7 @@ import { useWallet } from '../context/WalletContext';
 import { getBorrowerLoans, repayLoan, cancelLoan, seedDemoData, createLoanRequest } from '../utils/lendingEngine';
 import { formatBTC, formatUSDT, formatUSD } from '../utils/formatters';
 import { MOCK_BTC_PRICE_USD } from '../utils/constants';
-import { 
-  createLoanOnChain, repayLoanOnChain, cancelLoanOnChain,
-  getAllOnChainLoans, isContractAvailable, getContractAddress 
-} from '../utils/contractService';
+import { isContractAvailable, getContractAddress, getOnChainLoanCount } from '../utils/contractService';
 import LoanCard from './LoanCard';
 import CreateLoanModal from './CreateLoanModal';
 
@@ -15,32 +12,15 @@ export default function BorrowerDashboard() {
   const [loans, setLoans] = useState([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [filter, setFilter] = useState('all');
-  const [chainStatus, setChainStatus] = useState('checking'); // 'checking' | 'online' | 'offline'
-  const [txPending, setTxPending] = useState(null); // active tx description
+  const [chainStatus, setChainStatus] = useState('checking');
+  const [onChainLoanCount, setOnChainLoanCount] = useState(null);
 
-  const loadLoans = useCallback(async () => {
+  const loadLoans = useCallback(() => {
     if (!address) return;
-    
-    // Always load localStorage loans as base
     seedDemoData(address);
-    const localLoans = getBorrowerLoans(address);
-    setLoans(localLoans);
+    setLoans(getBorrowerLoans(address));
     updateLockedBalance(address);
-
-    // Try to load on-chain loans too
-    if (isRealWallet) {
-      try {
-        const onChainLoans = await getAllOnChainLoans();
-        if (onChainLoans.length > 0) {
-          // Merge: show on-chain loans with a badge, keep local loans that aren't on-chain
-          const mergedLoans = [...onChainLoans.filter(l => l.borrower === address || l.borrower === ''), ...localLoans];
-          setLoans(mergedLoans);
-        }
-      } catch (e) {
-        console.warn('On-chain loan fetch failed, using local:', e);
-      }
-    }
-  }, [address, updateLockedBalance, isRealWallet]);
+  }, [address, updateLockedBalance]);
 
   useEffect(() => { loadLoans(); }, [loadLoans]);
 
@@ -50,6 +30,10 @@ export default function BorrowerDashboard() {
       try {
         const available = await isContractAvailable();
         setChainStatus(available ? 'online' : 'offline');
+        if (available) {
+          const count = await getOnChainLoanCount();
+          setOnChainLoanCount(count);
+        }
       } catch {
         setChainStatus('offline');
       }
@@ -58,50 +42,20 @@ export default function BorrowerDashboard() {
     else setChainStatus('offline');
   }, [isRealWallet]);
 
-  const handleRepay = async (loanId) => {
+  const handleRepay = (loanId) => {
     try {
-      // Try on-chain first
-      if (isRealWallet && chainStatus === 'online') {
-        setTxPending('Repaying loan on-chain...');
-        try {
-          await repayLoanOnChain(address, loanId);
-          setTxPending(null);
-          loadLoans();
-          return;
-        } catch (e) {
-          console.warn('On-chain repay failed, falling back:', e);
-          setTxPending(null);
-        }
-      }
-      // Fallback: local
       repayLoan(loanId);
       loadLoans();
     } catch (err) {
-      setTxPending(null);
       alert(err.message);
     }
   };
 
-  const handleCancel = async (loanId) => {
+  const handleCancel = (loanId) => {
     try {
-      // Try on-chain first
-      if (isRealWallet && chainStatus === 'online') {
-        setTxPending('Cancelling loan on-chain...');
-        try {
-          await cancelLoanOnChain(address, loanId);
-          setTxPending(null);
-          loadLoans();
-          return;
-        } catch (e) {
-          console.warn('On-chain cancel failed, falling back:', e);
-          setTxPending(null);
-        }
-      }
-      // Fallback: local
       cancelLoan(loanId);
       loadLoans();
     } catch (err) {
-      setTxPending(null);
       alert(err.message);
     }
   };
@@ -111,7 +65,8 @@ export default function BorrowerDashboard() {
     : loans.filter(l => l.status === filter);
 
   const activeLoans = loans.filter(l => l.status === 'active');
-  const totalCollateral = activeLoans.reduce((sum, l) => sum + l.btcCollateral, 0);
+  const pendingLoans = loans.filter(l => l.status === 'pending');
+  const totalCollateral = [...activeLoans, ...pendingLoans].reduce((sum, l) => sum + l.btcCollateral, 0);
   const totalBorrowed = activeLoans.reduce((sum, l) => sum + l.usdtAmount, 0);
 
   if (!isConnected) {
@@ -141,12 +96,7 @@ export default function BorrowerDashboard() {
               Lock BTC as collateral and borrow USDT
               {chainStatus === 'online' && (
                 <span className="badge badge-success" style={{ fontSize: '0.65rem' }}>
-                  ⛓️ On-Chain
-                </span>
-              )}
-              {chainStatus === 'offline' && (
-                <span className="badge badge-warning" style={{ fontSize: '0.65rem' }}>
-                  📋 Simulation
+                  ⛓️ Contract Live
                 </span>
               )}
             </p>
@@ -166,26 +116,14 @@ export default function BorrowerDashboard() {
             fontSize: 'var(--font-size-xs)',
             color: 'var(--color-success)',
             marginBottom: 'var(--space-4)',
-          }}>
-            ⛓️ Connected to contract: <code style={{ opacity: 0.8 }}>{getContractAddress()}</code>
-          </div>
-        )}
-
-        {/* Pending tx overlay */}
-        {txPending && (
-          <div style={{
-            padding: 'var(--space-3) var(--space-4)',
-            background: 'var(--color-accent-subtle)',
-            border: '1px solid rgba(247, 147, 26, 0.3)',
-            borderRadius: 'var(--radius-md)',
-            fontSize: 'var(--font-size-sm)',
-            color: 'var(--color-accent)',
-            marginBottom: 'var(--space-4)',
             display: 'flex',
+            justifyContent: 'space-between',
             alignItems: 'center',
-            gap: 'var(--space-2)',
           }}>
-            <span className="spinner" style={{ animation: 'pulse 1s infinite' }}>⟳</span> {txPending}
+            <span>⛓️ Contract: <code style={{ opacity: 0.8 }}>{getContractAddress()}</code></span>
+            {onChainLoanCount !== null && (
+              <span>On-chain loans: <strong>{onChainLoanCount}</strong></span>
+            )}
           </div>
         )}
 
@@ -204,6 +142,9 @@ export default function BorrowerDashboard() {
             <div className="dashboard-stat-label">Locked Collateral</div>
             <div className="dashboard-stat-value" style={{ color: 'var(--color-warning)' }}>
               {formatBTC(totalCollateral)}
+            </div>
+            <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-muted)' }}>
+              ≈ {formatUSD(totalCollateral * MOCK_BTC_PRICE_USD)}
             </div>
           </div>
           <div className="glass-card dashboard-stat">
@@ -261,17 +202,14 @@ export default function BorrowerDashboard() {
                 actions={
                   <>
                     {loan.status === 'active' && (
-                      <button className="btn btn-success btn-sm" onClick={() => handleRepay(loan.id)} disabled={!!txPending}>
+                      <button className="btn btn-success btn-sm" onClick={() => handleRepay(loan.id)}>
                         💳 Repay
                       </button>
                     )}
                     {loan.status === 'pending' && (
-                      <button className="btn btn-danger btn-sm" onClick={() => handleCancel(loan.id)} disabled={!!txPending}>
+                      <button className="btn btn-danger btn-sm" onClick={() => handleCancel(loan.id)}>
                         ✕ Cancel
                       </button>
-                    )}
-                    {loan.onChain && (
-                      <span className="badge badge-accent" style={{ fontSize: '0.6rem' }}>⛓️</span>
                     )}
                   </>
                 }
@@ -285,7 +223,6 @@ export default function BorrowerDashboard() {
           <CreateLoanModal
             onClose={() => setShowCreateModal(false)}
             onCreated={loadLoans}
-            chainStatus={chainStatus}
           />
         )}
       </div>

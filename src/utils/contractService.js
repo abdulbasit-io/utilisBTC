@@ -128,51 +128,79 @@ export async function getAllOnChainLoans() {
 // ── Write Functions (via OPWallet) ──────────────────────
 
 /**
- * Build calldata for a contract method.
- * This is sent to OPWallet for signing.
+ * Simulate a contract call and get the interaction data for signing.
+ * The SDK's contract proxy returns a CallResult which contains the
+ * calldata, gas estimates, and access list needed for OPWallet.
  */
-function buildCalldata(methodName, args, senderAddress) {
-  try {
-    const c = getContractInstance(senderAddress);
-    if (!c) return null;
-    return c.encodeCalldata(methodName, args);
-  } catch (e) {
-    console.warn(`encodeCalldata(${methodName}) failed:`, e);
-    return null;
+async function simulateContractCall(methodName, args, senderAddress) {
+  const c = getContractInstance(senderAddress);
+  if (!c) throw new Error('Contract instance not available');
+
+  // Set sender so simulation knows who is calling
+  if (senderAddress) {
+    try { c.setSender(senderAddress); } catch { }
   }
+
+  // Call the method — this simulates on-chain and returns CallResult
+  const result = await c[methodName](...args);
+
+  if (result?.revert) {
+    throw new Error(`Contract reverted: ${result.revert}`);
+  }
+
+  return result;
 }
 
 /**
- * Send a contract interaction via OPWallet
- * Returns the tx hash or null
+ * Send a contract interaction via OPWallet.
+ * Flow: simulate → get calldata → pass to OPWallet for signing → broadcast
  */
 async function sendViaOPWallet(methodName, args, senderAddress) {
   if (!window.opnet) {
     throw new Error('OPWallet not available');
   }
 
-  const calldata = buildCalldata(methodName, args, senderAddress);
-  if (!calldata) {
-    throw new Error('Failed to encode calldata');
+  // Step 1: Simulate the call to get calldata and gas estimates
+  const callResult = await simulateContractCall(methodName, args, senderAddress);
+
+  if (!callResult?.calldata) {
+    throw new Error('Simulation returned no calldata');
+  }
+
+  const interactionParams = {
+    contractAddress: CONTRACTS.UTILISBTC,
+    calldata: callResult.calldata.toString('hex'),
+  };
+
+  // Add gas estimates if available
+  if (callResult.estimatedGas) {
+    interactionParams.gasLimit = callResult.estimatedGas.toString();
   }
 
   try {
-    // OPWallet's signInteraction API
-    const result = await window.opnet.signInteraction({
-      to: CONTRACTS.UTILISBTC,
-      calldata: calldata.toString('hex'),
-    });
+    // Try signAndBroadcastInteraction first (combined sign + broadcast)
+    if (typeof window.opnet.signAndBroadcastInteraction === 'function') {
+      const result = await window.opnet.signAndBroadcastInteraction(interactionParams);
+      return result?.txId || result?.transactionId || result || 'tx_submitted';
+    }
+  } catch (e) {
+    console.warn('signAndBroadcastInteraction failed, trying signInteraction:', e);
+  }
 
-    if (result?.txId) {
-      return result.txId;
+  try {
+    // Fallback: signInteraction (sign only, then push)
+    const signed = await window.opnet.signInteraction(interactionParams);
+
+    // If we got a signed tx, try to push it
+    if (signed && typeof window.opnet.pushTx === 'function') {
+      const rawTx = signed.rawTransaction || signed.hex || signed;
+      if (typeof rawTx === 'string') {
+        const pushResult = await window.opnet.pushTx(rawTx);
+        return pushResult?.txId || pushResult || 'tx_submitted';
+      }
     }
 
-    // Alternative: some OPWallet versions use different response format
-    if (result?.transactionId) {
-      return result.transactionId;
-    }
-
-    return result || 'tx_submitted';
+    return signed?.txId || signed?.transactionId || signed || 'tx_submitted';
   } catch (e) {
     console.error(`OPWallet interaction ${methodName} failed:`, e);
     throw e;
