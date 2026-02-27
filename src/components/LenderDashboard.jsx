@@ -4,35 +4,88 @@ import {
   getAvailableLoans,
   getLenderLoans,
   liquidateLoan,
+  fundLoan,
   seedDemoData,
 } from '../utils/lendingEngine';
+import {
+  fundLoanOnChain, liquidateLoanOnChain,
+  getAllOnChainLoans, isContractAvailable, getContractAddress,
+} from '../utils/contractService';
 import { formatUSDT, formatUSD } from '../utils/formatters';
 import { PLATFORM_FEE_RATE } from '../utils/constants';
 import LoanCard from './LoanCard';
 import LendModal from './LendModal';
 
 export default function LenderDashboard() {
-  const { isConnected, address, usdtBalance, connect } = useWallet();
+  const { isConnected, address, usdtBalance, connect, isRealWallet } = useWallet();
   const [availableLoans, setAvailableLoans] = useState([]);
   const [myInvestments, setMyInvestments] = useState([]);
   const [selectedLoan, setSelectedLoan] = useState(null);
   const [tab, setTab] = useState('marketplace');
+  const [chainStatus, setChainStatus] = useState('checking');
+  const [txPending, setTxPending] = useState(null);
 
-  const loadData = useCallback(() => {
+  const loadData = useCallback(async () => {
     seedDemoData(address);
     setAvailableLoans(getAvailableLoans());
     if (address) {
       setMyInvestments(getLenderLoans(address));
     }
-  }, [address]);
+
+    // Try on-chain loans too
+    if (isRealWallet) {
+      try {
+        const onChainLoans = await getAllOnChainLoans();
+        if (onChainLoans.length > 0) {
+          const onChainPending = onChainLoans.filter(l => l.status === 'pending');
+          const onChainMine = onChainLoans.filter(l => l.lender === address);
+          if (onChainPending.length > 0) {
+            setAvailableLoans(prev => [...onChainPending, ...prev]);
+          }
+          if (onChainMine.length > 0) {
+            setMyInvestments(prev => [...onChainMine, ...prev]);
+          }
+        }
+      } catch (e) {
+        console.warn('On-chain loan fetch failed:', e);
+      }
+    }
+  }, [address, isRealWallet]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
+  // Check contract availability
+  useEffect(() => {
+    async function checkChain() {
+      try {
+        const available = await isContractAvailable();
+        setChainStatus(available ? 'online' : 'offline');
+      } catch {
+        setChainStatus('offline');
+      }
+    }
+    if (isRealWallet) checkChain();
+    else setChainStatus('offline');
+  }, [isRealWallet]);
+
   const handleLiquidate = async (loanId) => {
     try {
+      if (isRealWallet && chainStatus === 'online') {
+        setTxPending('Liquidating loan on-chain...');
+        try {
+          await liquidateLoanOnChain(address, loanId);
+          setTxPending(null);
+          loadData();
+          return;
+        } catch (e) {
+          console.warn('On-chain liquidate failed:', e);
+          setTxPending(null);
+        }
+      }
       liquidateLoan(loanId);
       loadData();
     } catch (err) {
+      setTxPending(null);
       alert(err.message);
     }
   };
@@ -40,7 +93,7 @@ export default function LenderDashboard() {
   const activeInvestments = myInvestments.filter(l => l.status === 'active');
   const totalLent = activeInvestments.reduce((sum, l) => sum + l.usdtAmount, 0);
   const totalExpectedReturn = activeInvestments.reduce((sum, l) => {
-    const lenderEarnings = l.interest - (l.interest * PLATFORM_FEE_RATE);
+    const lenderEarnings = (l.interest || 0) - ((l.interest || 0) * PLATFORM_FEE_RATE);
     return sum + l.usdtAmount + lenderEarnings;
   }, 0);
 
@@ -67,11 +120,54 @@ export default function LenderDashboard() {
         <div className="dashboard-header">
           <div>
             <h1 className="dashboard-title">💰 Lender Dashboard</h1>
-            <p style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-sm)', marginTop: 'var(--space-1)' }}>
+            <p style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-sm)', marginTop: 'var(--space-1)', display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
               Supply USDT to earn interest — backed by Bitcoin collateral
+              {chainStatus === 'online' && (
+                <span className="badge badge-success" style={{ fontSize: '0.65rem' }}>
+                  ⛓️ On-Chain
+                </span>
+              )}
+              {chainStatus === 'offline' && (
+                <span className="badge badge-warning" style={{ fontSize: '0.65rem' }}>
+                  📋 Simulation
+                </span>
+              )}
             </p>
           </div>
         </div>
+
+        {/* Contract info */}
+        {getContractAddress() && chainStatus === 'online' && (
+          <div style={{
+            padding: 'var(--space-3) var(--space-4)',
+            background: 'var(--color-success-bg)',
+            border: '1px solid rgba(16, 185, 129, 0.2)',
+            borderRadius: 'var(--radius-md)',
+            fontSize: 'var(--font-size-xs)',
+            color: 'var(--color-success)',
+            marginBottom: 'var(--space-4)',
+          }}>
+            ⛓️ Connected to contract: <code style={{ opacity: 0.8 }}>{getContractAddress()}</code>
+          </div>
+        )}
+
+        {/* Pending tx */}
+        {txPending && (
+          <div style={{
+            padding: 'var(--space-3) var(--space-4)',
+            background: 'var(--color-accent-subtle)',
+            border: '1px solid rgba(247, 147, 26, 0.3)',
+            borderRadius: 'var(--radius-md)',
+            fontSize: 'var(--font-size-sm)',
+            color: 'var(--color-accent)',
+            marginBottom: 'var(--space-4)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 'var(--space-2)',
+          }}>
+            <span style={{ animation: 'pulse 1s infinite' }}>⟳</span> {txPending}
+          </div>
+        )}
 
         {/* Stats */}
         <div className="dashboard-stats">
@@ -136,12 +232,18 @@ export default function LenderDashboard() {
                     loan={loan}
                     showBorrower
                     actions={
-                      <button
-                        className="btn btn-success btn-sm"
-                        onClick={() => setSelectedLoan(loan)}
-                      >
-                        💰 Fund Loan
-                      </button>
+                      <>
+                        <button
+                          className="btn btn-success btn-sm"
+                          onClick={() => setSelectedLoan(loan)}
+                          disabled={!!txPending}
+                        >
+                          💰 Fund Loan
+                        </button>
+                        {loan.onChain && (
+                          <span className="badge badge-accent" style={{ fontSize: '0.6rem' }}>⛓️</span>
+                        )}
+                      </>
                     }
                   />
                 ))}
@@ -178,6 +280,7 @@ export default function LenderDashboard() {
                           <button
                             className="btn btn-danger btn-sm"
                             onClick={() => handleLiquidate(loan.id)}
+                            disabled={!!txPending}
                           >
                             ⚠️ Liquidate
                           </button>
@@ -197,6 +300,7 @@ export default function LenderDashboard() {
             loan={selectedLoan}
             onClose={() => setSelectedLoan(null)}
             onFunded={loadData}
+            chainStatus={chainStatus}
           />
         )}
       </div>

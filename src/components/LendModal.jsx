@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { useWallet } from '../context/WalletContext';
 import { fundLoan } from '../utils/lendingEngine';
+import { fundLoanOnChain } from '../utils/contractService';
 import { formatBTC, formatUSDT, formatPercent, formatUSD } from '../utils/formatters';
 import { MOCK_BTC_PRICE_USD, PLATFORM_FEE_RATE } from '../utils/constants';
 
-export default function LendModal({ loan, onClose, onFunded }) {
-  const { address, usdtBalance } = useWallet();
+export default function LendModal({ loan, onClose, onFunded, chainStatus }) {
+  const { address, usdtBalance, isRealWallet } = useWallet();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
 
@@ -21,7 +22,20 @@ export default function LendModal({ loan, onClose, onFunded }) {
 
     setIsSubmitting(true);
     try {
-      await new Promise(r => setTimeout(r, 1200)); // Simulate tx
+      // Try on-chain first
+      if (isRealWallet && chainStatus === 'online') {
+        try {
+          await fundLoanOnChain(address, loan.id);
+          onFunded?.();
+          onClose();
+          return;
+        } catch (e) {
+          console.warn('On-chain fund failed, using local:', e);
+        }
+      }
+
+      // Fallback: local
+      await new Promise(r => setTimeout(r, 1200));
       fundLoan(loan.id, address);
       onFunded?.();
       onClose();

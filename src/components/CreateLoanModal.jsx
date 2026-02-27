@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { useWallet } from '../context/WalletContext';
 import { createLoanRequest } from '../utils/lendingEngine';
+import { createLoanOnChain } from '../utils/contractService';
 import { formatUSD, formatUSDT, formatPercent, calcInterest } from '../utils/formatters';
 import { MIN_COLLATERAL_RATIO, PLATFORM_FEE_RATE, MOCK_BTC_PRICE_USD } from '../utils/constants';
 
-export default function CreateLoanModal({ onClose, onCreated }) {
-  const { address, btcBalance, availableBalance } = useWallet();
+export default function CreateLoanModal({ onClose, onCreated, chainStatus }) {
+  const { address, btcBalance, availableBalance, isRealWallet } = useWallet();
   const [btcCollateral, setBtcCollateral] = useState('');
   const [usdtAmount, setUsdtAmount] = useState('');
   const [durationDays, setDurationDays] = useState('30');
@@ -46,7 +47,23 @@ export default function CreateLoanModal({ onClose, onCreated }) {
 
     setIsSubmitting(true);
     try {
-      await new Promise(r => setTimeout(r, 1000)); // Simulate tx
+      // Try on-chain first if wallet connected and chain available
+      if (isRealWallet && chainStatus === 'online') {
+        try {
+          const collateralSats = Math.round(btcVal * 1e8);
+          const loanSats = Math.round(usdtVal * 1e8);
+          const rateBps = Math.round(rateVal * 10000);
+          await createLoanOnChain(address, collateralSats, loanSats, durationVal, rateBps);
+          onCreated?.();
+          onClose();
+          return;
+        } catch (e) {
+          console.warn('On-chain createLoan failed, using local:', e);
+        }
+      }
+
+      // Fallback: local simulation
+      await new Promise(r => setTimeout(r, 1000));
       createLoanRequest({
         borrower: address,
         btcCollateral: btcVal,
