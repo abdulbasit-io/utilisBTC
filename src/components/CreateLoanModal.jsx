@@ -5,7 +5,7 @@ import { formatUSD, formatUSDT, formatPercent, calcInterest } from '../utils/for
 import { MIN_COLLATERAL_RATIO, PLATFORM_FEE_RATE, MOCK_BTC_PRICE_USD } from '../utils/constants';
 
 export default function CreateLoanModal({ onClose, onCreated }) {
-  const { address, btcBalance } = useWallet();
+  const { address, btcBalance, availableBalance } = useWallet();
   const [btcCollateral, setBtcCollateral] = useState('');
   const [usdtAmount, setUsdtAmount] = useState('');
   const [durationDays, setDurationDays] = useState('30');
@@ -36,7 +36,7 @@ export default function CreateLoanModal({ onClose, onCreated }) {
     setError('');
 
     if (btcVal <= 0) return setError('Enter BTC collateral amount');
-    if (btcVal > btcBalance) return setError('Insufficient BTC balance');
+    if (btcVal > availableBalance) return setError(`Insufficient BTC. Available: ${availableBalance.toFixed(4)} BTC`);
     if (usdtVal <= 0) return setError('Enter USDT loan amount');
     if (durationVal < 7 || durationVal > 365) return setError('Duration must be 7–365 days');
     if (rateVal <= 0 || rateVal > 0.5) return setError('Interest rate must be 0.1%–50%');
@@ -87,7 +87,7 @@ export default function CreateLoanModal({ onClose, onCreated }) {
               <span className="input-suffix">BTC</span>
             </div>
             <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-muted)', display: 'flex', justifyContent: 'space-between' }}>
-              <span>Balance: {btcBalance.toFixed(4)} BTC</span>
+              <span>Available: {availableBalance.toFixed(4)} BTC</span>
               <span>≈ {formatUSD(collateralValueUSD)}</span>
             </div>
           </div>

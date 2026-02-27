@@ -224,7 +224,7 @@ export function cancelLoan(loanId) {
   if (loan.status !== LOAN_STATUS.PENDING) throw new Error('Only pending loans can be cancelled');
 
   const updatedLoan = updateLoan(loanId, {
-    status: LOAN_STATUS.EXPIRED,
+    status: LOAN_STATUS.CANCELLED,
   });
 
   const stats = getStats();

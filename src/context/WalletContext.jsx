@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { MOCK_BTC_PRICE_USD, NETWORK } from '../utils/constants';
+import { MOCK_BTC_PRICE_USD, NETWORK, LINKS } from '../utils/constants';
 import { getProvider, getBalance as providerGetBalance } from '../utils/opnetProvider';
+import { getBorrowerLoans } from '../utils/lendingEngine';
 
 const WalletContext = createContext(null);
 
@@ -14,26 +15,38 @@ export function WalletProvider({ children }) {
   const [isConnected, setIsConnected] = useState(false);
   const [address, setAddress] = useState('');
   const [btcBalance, setBtcBalance] = useState(0);
+  const [lockedBalance, setLockedBalance] = useState(0);
   const [usdtBalance, setUsdtBalance] = useState(0);
   const [network, setNetwork] = useState(NETWORK);
   const [isConnecting, setIsConnecting] = useState(false);
-  const [walletType, setWalletType] = useState('none'); // 'opwallet' | 'mock' | 'none'
-  const [blockNumber, setBlockNumber] = useState(null);
+  const [walletType, setWalletType] = useState('none');
+  const [showInstallPrompt, setShowInstallPrompt] = useState(false);
 
   // Check OPWallet availability
   const isOPWalletAvailable = () => {
     return typeof window !== 'undefined' && window.opnet;
   };
 
-  // Fetch on-chain balance via OP_NET provider
+  // Calculate locked collateral from active loans
+  const updateLockedBalance = useCallback((addr) => {
+    if (!addr) return;
+    try {
+      const loans = getBorrowerLoans(addr);
+      const locked = loans
+        .filter(l => l.status === 'pending' || l.status === 'active')
+        .reduce((sum, l) => sum + l.btcCollateral, 0);
+      setLockedBalance(locked);
+    } catch {
+      setLockedBalance(0);
+    }
+  }, []);
+
+  // Fetch on-chain balance
   const fetchOnChainBalance = useCallback(async (addr) => {
     try {
       const balance = await providerGetBalance(addr);
       if (balance !== null) {
-        // Balance comes in satoshis, convert to BTC
-        const btc = typeof balance === 'bigint' 
-          ? Number(balance) / 1e8 
-          : Number(balance) / 1e8;
+        const btc = Number(balance) / 1e8;
         setBtcBalance(btc);
       }
     } catch (err) {
@@ -52,9 +65,9 @@ export function WalletProvider({ children }) {
         setBtcBalance(data.btcBalance);
         setUsdtBalance(data.usdtBalance);
         setNetwork(data.network || NETWORK);
-        setWalletType(data.walletType || 'mock');
+        setWalletType(data.walletType || 'opwallet');
+        updateLockedBalance(data.address);
         
-        // If real wallet, refresh balance from chain
         if (data.walletType === 'opwallet' && data.address) {
           fetchOnChainBalance(data.address);
         }
@@ -62,116 +75,81 @@ export function WalletProvider({ children }) {
         localStorage.removeItem('hodllend_wallet');
       }
     }
+  }, [fetchOnChainBalance, updateLockedBalance]);
 
-    // Test provider connection
-    const testProvider = async () => {
-      try {
-        const provider = getProvider(NETWORK);
-        if (provider) {
-          const block = await provider.getBlockNumber();
-          setBlockNumber(block);
-        }
-      } catch (err) {
-        console.warn('Provider not available:', err);
-      }
-    };
-    testProvider();
-  }, [fetchOnChainBalance]);
-
-  // Connect wallet
+  // Connect wallet — OPWallet ONLY
   const connect = useCallback(async () => {
+    // Must have OPWallet installed
+    if (!isOPWalletAvailable()) {
+      setShowInstallPrompt(true);
+      return;
+    }
+
     setIsConnecting(true);
-
     try {
-      // ── Try real OPWallet first ──────────────────────────
-      if (isOPWalletAvailable()) {
+      const accounts = await window.opnet.requestAccounts();
+      if (accounts && accounts.length > 0) {
+        const addr = accounts[0];
+        
+        // Get balance
+        let btcBal = 0;
         try {
-          const accounts = await window.opnet.requestAccounts();
-          if (accounts && accounts.length > 0) {
-            const addr = accounts[0];
-            
-            // Get balance from OPWallet
-            let btcBal = 0.5; // fallback
-            try {
-              const walletBalance = await window.opnet.getBalance();
-              if (walletBalance?.confirmed !== undefined) {
-                btcBal = walletBalance.confirmed / 1e8;
-              }
-            } catch (e) {
-              console.warn('OPWallet getBalance failed, trying provider:', e);
-              // Try via OP_NET provider
-              const provBalance = await providerGetBalance(addr);
-              if (provBalance !== null) {
-                btcBal = Number(provBalance) / 1e8;
-              }
-            }
-
-            setAddress(addr);
-            setBtcBalance(btcBal);
-            setUsdtBalance(10000); // Mock USDT (no USDT token deployed yet)
-            setIsConnected(true);
-            setNetwork(NETWORK);
-            setWalletType('opwallet');
-
-            const walletData = {
-              address: addr,
-              btcBalance: btcBal,
-              usdtBalance: 10000,
-              network: NETWORK,
-              walletType: 'opwallet',
-            };
-            localStorage.setItem('hodllend_wallet', JSON.stringify(walletData));
-            return;
+          const walletBalance = await window.opnet.getBalance();
+          if (walletBalance?.confirmed !== undefined) {
+            btcBal = walletBalance.confirmed / 1e8;
           }
-        } catch (err) {
-          console.log('OPWallet connection failed, using mock:', err);
+        } catch (e) {
+          console.warn('OPWallet getBalance failed, trying provider:', e);
+          try {
+            const provBalance = await providerGetBalance(addr);
+            if (provBalance !== null) {
+              btcBal = Number(provBalance) / 1e8;
+            }
+          } catch {}
         }
+
+        setAddress(addr);
+        setBtcBalance(btcBal);
+        setUsdtBalance(10000); // Mock USDT until token deployed
+        setIsConnected(true);
+        setNetwork(NETWORK);
+        setWalletType('opwallet');
+        updateLockedBalance(addr);
+
+        localStorage.setItem('hodllend_wallet', JSON.stringify({
+          address: addr,
+          btcBalance: btcBal,
+          usdtBalance: 10000,
+          network: NETWORK,
+          walletType: 'opwallet',
+        }));
       }
-
-      // ── Fallback: Mock wallet for demo ───────────────────
-      await new Promise(resolve => setTimeout(resolve, 1200));
-      
-      const mockAddress = 'bc1q' + Array.from({ length: 38 }, () =>
-        '0123456789abcdefghjkmnpqrstuvwxyz'[Math.floor(Math.random() * 32)]
-      ).join('');
-
-      const mockBtcBalance = 0.5;
-      const mockUsdtBalance = 10000;
-
-      setAddress(mockAddress);
-      setBtcBalance(mockBtcBalance);
-      setUsdtBalance(mockUsdtBalance);
-      setIsConnected(true);
-      setNetwork(NETWORK);
-      setWalletType('mock');
-
-      const walletData = {
-        address: mockAddress,
-        btcBalance: mockBtcBalance,
-        usdtBalance: mockUsdtBalance,
-        network: NETWORK,
-        walletType: 'mock',
-      };
-      localStorage.setItem('hodllend_wallet', JSON.stringify(walletData));
+    } catch (err) {
+      console.error('OPWallet connection failed:', err);
+      // Still show install prompt if connection fails
+      setShowInstallPrompt(true);
     } finally {
       setIsConnecting(false);
     }
-  }, []);
+  }, [updateLockedBalance]);
 
   // Disconnect
   const disconnect = useCallback(() => {
     setIsConnected(false);
     setAddress('');
     setBtcBalance(0);
+    setLockedBalance(0);
     setUsdtBalance(0);
     setWalletType('none');
     localStorage.removeItem('hodllend_wallet');
   }, []);
 
-  // Refresh balance
+  // Refresh balance + locked amounts
   const refreshBalance = useCallback(async () => {
     if (!isConnected || !address) return;
     
+    updateLockedBalance(address);
+
     if (walletType === 'opwallet') {
       try {
         if (isOPWalletAvailable()) {
@@ -180,13 +158,19 @@ export function WalletProvider({ children }) {
             setBtcBalance(walletBalance.confirmed / 1e8);
           }
         }
-        // Also try provider
         await fetchOnChainBalance(address);
       } catch (err) {
         console.warn('Balance refresh failed:', err);
       }
     }
-  }, [isConnected, address, walletType, fetchOnChainBalance]);
+  }, [isConnected, address, walletType, fetchOnChainBalance, updateLockedBalance]);
+
+  // Dismiss install prompt
+  const dismissInstallPrompt = useCallback(() => {
+    setShowInstallPrompt(false);
+  }, []);
+
+  const availableBalance = Math.max(0, btcBalance - lockedBalance);
 
   const value = {
     // State
@@ -194,16 +178,20 @@ export function WalletProvider({ children }) {
     isConnecting,
     address,
     btcBalance,
+    lockedBalance,
+    availableBalance,
     usdtBalance,
     network,
     walletType,
-    blockNumber,
     btcPrice: MOCK_BTC_PRICE_USD,
+    showInstallPrompt,
     
     // Actions
     connect,
     disconnect,
     refreshBalance,
+    updateLockedBalance,
+    dismissInstallPrompt,
     
     // Helpers
     btcValueUSD: btcBalance * MOCK_BTC_PRICE_USD,
@@ -214,6 +202,45 @@ export function WalletProvider({ children }) {
   return (
     <WalletContext.Provider value={value}>
       {children}
+      
+      {/* OPWallet Install Prompt Modal */}
+      {showInstallPrompt && (
+        <div className="modal-overlay" onClick={dismissInstallPrompt}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '420px' }}>
+            <div className="modal-header">
+              <h3 className="modal-title">📥 OPWallet Required</h3>
+              <button className="modal-close" onClick={dismissInstallPrompt}>✕</button>
+            </div>
+            <div className="modal-body" style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: '3rem', marginBottom: 'var(--space-4)' }}>🦊</div>
+              <p style={{ 
+                fontSize: 'var(--font-size-md)', 
+                color: 'var(--color-text-secondary)',
+                lineHeight: 1.6,
+                marginBottom: 'var(--space-6)',
+              }}>
+                HodlLend requires <strong style={{ color: 'var(--color-accent)' }}>OPWallet</strong> to interact with the Bitcoin L1 network. Install the browser extension to get started.
+              </p>
+              <a 
+                href={LINKS.OPWALLET} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="btn btn-primary btn-lg"
+                style={{ width: '100%', justifyContent: 'center', marginBottom: 'var(--space-3)' }}
+              >
+                📥 Install OPWallet
+              </a>
+              <button 
+                className="btn btn-secondary" 
+                onClick={dismissInstallPrompt}
+                style={{ width: '100%' }}
+              >
+                Maybe Later
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </WalletContext.Provider>
   );
 }

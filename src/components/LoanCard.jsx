@@ -2,7 +2,7 @@ import { STATUS_CONFIG } from '../utils/constants';
 import { formatBTC, formatUSDT, formatTimeRemaining, formatPercent, formatAddress } from '../utils/formatters';
 
 export default function LoanCard({ loan, actions, showBorrower = false, showLender = false }) {
-  const statusCfg = STATUS_CONFIG[loan.status];
+  const statusCfg = STATUS_CONFIG[loan.status] || { label: loan.status || 'Unknown', badge: 'badge-info', icon: '❓' };
   const isExpired = loan.expiresAt && new Date(loan.expiresAt) < new Date();
   const isActive = loan.status === 'active';
 

@@ -7,7 +7,7 @@ import LoanCard from './LoanCard';
 import CreateLoanModal from './CreateLoanModal';
 
 export default function BorrowerDashboard() {
-  const { isConnected, address, btcBalance, connect } = useWallet();
+  const { isConnected, address, btcBalance, availableBalance, lockedBalance, connect, updateLockedBalance } = useWallet();
   const [loans, setLoans] = useState([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [filter, setFilter] = useState('all');
@@ -16,8 +16,9 @@ export default function BorrowerDashboard() {
     if (address) {
       seedDemoData(address);
       setLoans(getBorrowerLoans(address));
+      updateLockedBalance(address);
     }
-  }, [address]);
+  }, [address, updateLockedBalance]);
 
   useEffect(() => { loadLoans(); }, [loadLoans]);
 
@@ -82,12 +83,12 @@ export default function BorrowerDashboard() {
         {/* Stats */}
         <div className="dashboard-stats">
           <div className="glass-card dashboard-stat">
-            <div className="dashboard-stat-label">Your BTC Balance</div>
+            <div className="dashboard-stat-label">Available BTC</div>
             <div className="dashboard-stat-value" style={{ color: 'var(--color-accent)' }}>
-              {formatBTC(btcBalance)}
+              {formatBTC(availableBalance)}
             </div>
             <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-muted)' }}>
-              ≈ {formatUSD(btcBalance * MOCK_BTC_PRICE_USD)}
+              Total: {formatBTC(btcBalance)} · Locked: {formatBTC(lockedBalance)}
             </div>
           </div>
           <div className="glass-card dashboard-stat">
@@ -117,6 +118,7 @@ export default function BorrowerDashboard() {
             ['pending', 'Pending'],
             ['active', 'Active'],
             ['repaid', 'Repaid'],
+            ['cancelled', 'Cancelled'],
           ].map(([key, label]) => (
             <button
               key={key}
