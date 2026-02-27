@@ -128,83 +128,130 @@ export async function getAllOnChainLoans() {
 // ── Write Functions (via OPWallet) ──────────────────────
 
 /**
- * Simulate a contract call and get the interaction data for signing.
- * The SDK's contract proxy returns a CallResult which contains the
- * calldata, gas estimates, and access list needed for OPWallet.
- */
-async function simulateContractCall(methodName, args, senderAddress) {
-  const c = getContractInstance(senderAddress);
-  if (!c) throw new Error('Contract instance not available');
-
-  // Set sender so simulation knows who is calling
-  if (senderAddress) {
-    try { c.setSender(senderAddress); } catch { }
-  }
-
-  // Call the method — this simulates on-chain and returns CallResult
-  const result = await c[methodName](...args);
-
-  if (result?.revert) {
-    throw new Error(`Contract reverted: ${result.revert}`);
-  }
-
-  return result;
-}
-
-/**
  * Send a contract interaction via OPWallet.
- * Flow: simulate → get calldata → pass to OPWallet for signing → broadcast
+ * Uses encodeCalldata (proven working) + tries multiple OPWallet param formats.
  */
 async function sendViaOPWallet(methodName, args, senderAddress) {
   if (!window.opnet) {
     throw new Error('OPWallet not available');
   }
 
-  // Step 1: Simulate the call to get calldata and gas estimates
-  const callResult = await simulateContractCall(methodName, args, senderAddress);
+  // Step 1: Encode calldata using the SDK (proven working in Node.js tests)
+  const c = getContractInstance(senderAddress);
+  if (!c) throw new Error('Contract instance not available');
 
-  if (!callResult?.calldata) {
-    throw new Error('Simulation returned no calldata');
-  }
-
-  const interactionParams = {
-    contractAddress: CONTRACTS.UTILISBTC,
-    calldata: callResult.calldata.toString('hex'),
-  };
-
-  // Add gas estimates if available
-  if (callResult.estimatedGas) {
-    interactionParams.gasLimit = callResult.estimatedGas.toString();
-  }
-
+  let calldata;
   try {
-    // Try signAndBroadcastInteraction first (combined sign + broadcast)
-    if (typeof window.opnet.signAndBroadcastInteraction === 'function') {
-      const result = await window.opnet.signAndBroadcastInteraction(interactionParams);
+    calldata = c.encodeCalldata(methodName, args);
+  } catch (e) {
+    throw new Error(`Failed to encode ${methodName}: ${e.message}`);
+  }
+
+  if (!calldata) {
+    throw new Error('encodeCalldata returned null');
+  }
+
+  // Convert to hex string
+  let calldataHex;
+  if (typeof calldata === 'string') {
+    calldataHex = calldata;
+  } else if (calldata instanceof Uint8Array || Buffer.isBuffer(calldata)) {
+    calldataHex = Buffer.from(calldata).toString('hex');
+  } else if (calldata.toString) {
+    calldataHex = calldata.toString('hex');
+  } else {
+    throw new Error('Unknown calldata format');
+  }
+
+  console.log(`[utilisBTC] ⛓️ ${methodName} → OPWallet`);
+  console.log(`[utilisBTC]   Contract: ${CONTRACTS.UTILISBTC}`);
+  console.log(`[utilisBTC]   Calldata: ${calldataHex.substring(0, 40)}… (${calldataHex.length / 2} bytes)`);
+
+  const errors = [];
+
+  // Attempt 1: signAndBroadcastInteraction
+  if (typeof window.opnet.signAndBroadcastInteraction === 'function') {
+    try {
+      console.log('[utilisBTC]   Trying signAndBroadcastInteraction...');
+      const result = await window.opnet.signAndBroadcastInteraction({
+        contractAddress: CONTRACTS.UTILISBTC,
+        calldata: calldataHex,
+        from: senderAddress,
+      });
+      console.log('[utilisBTC]   ✅ Success:', result);
       return result?.txId || result?.transactionId || result || 'tx_submitted';
+    } catch (e) {
+      errors.push(`signAndBroadcastInteraction: ${e.message}`);
+      console.warn('[utilisBTC]   ❌', e.message);
     }
-  } catch (e) {
-    console.warn('signAndBroadcastInteraction failed, trying signInteraction:', e);
   }
 
-  try {
-    // Fallback: signInteraction (sign only, then push)
-    const signed = await window.opnet.signInteraction(interactionParams);
+  // Attempt 2: signInteraction with to + calldata
+  if (typeof window.opnet.signInteraction === 'function') {
+    try {
+      console.log('[utilisBTC]   Trying signInteraction({to, calldata})...');
+      const result = await window.opnet.signInteraction({
+        to: CONTRACTS.UTILISBTC,
+        calldata: calldataHex,
+        from: senderAddress,
+      });
+      console.log('[utilisBTC]   ✅ signInteraction result:', result);
 
-    // If we got a signed tx, try to push it
-    if (signed && typeof window.opnet.pushTx === 'function') {
-      const rawTx = signed.rawTransaction || signed.hex || signed;
-      if (typeof rawTx === 'string') {
-        const pushResult = await window.opnet.pushTx(rawTx);
-        return pushResult?.txId || pushResult || 'tx_submitted';
+      // If sign-only, push the tx
+      if (result && typeof window.opnet.pushTx === 'function') {
+        const raw = result.rawTransaction || result.hex || result.psbtHex;
+        if (raw) {
+          const pushed = await window.opnet.pushTx(raw);
+          return pushed?.txId || pushed || 'tx_pushed';
+        }
       }
+      return result?.txId || result?.transactionId || result || 'tx_submitted';
+    } catch (e) {
+      errors.push(`signInteraction(to,calldata): ${e.message}`);
+      console.warn('[utilisBTC]   ❌', e.message);
     }
-
-    return signed?.txId || signed?.transactionId || signed || 'tx_submitted';
-  } catch (e) {
-    console.error(`OPWallet interaction ${methodName} failed:`, e);
-    throw e;
   }
+
+  // Attempt 3: signInteraction with data field
+  if (typeof window.opnet.signInteraction === 'function') {
+    try {
+      console.log('[utilisBTC]   Trying signInteraction({to, data})...');
+      const result = await window.opnet.signInteraction({
+        to: CONTRACTS.UTILISBTC,
+        data: calldataHex,
+        from: senderAddress,
+      });
+      console.log('[utilisBTC]   ✅ signInteraction (data) result:', result);
+      return result?.txId || result?.transactionId || result || 'tx_submitted';
+    } catch (e) {
+      errors.push(`signInteraction(to,data): ${e.message}`);
+      console.warn('[utilisBTC]   ❌', e.message);
+    }
+  }
+
+  // Attempt 4: signInteraction with interactionParameters wrapper
+  if (typeof window.opnet.signInteraction === 'function') {
+    try {
+      console.log('[utilisBTC]   Trying signInteraction({interactionParameters})...');
+      const result = await window.opnet.signInteraction({
+        interactionParameters: {
+          contractAddress: CONTRACTS.UTILISBTC,
+          calldata: calldataHex,
+        },
+        from: senderAddress,
+      });
+      console.log('[utilisBTC]   ✅ signInteraction (wrapped) result:', result);
+      return result?.txId || result?.transactionId || result || 'tx_submitted';
+    } catch (e) {
+      errors.push(`signInteraction(wrapped): ${e.message}`);
+      console.warn('[utilisBTC]   ❌', e.message);
+    }
+  }
+
+  // All wallet attempts failed — throw with details
+  const errMsg = `On-chain signing failed:\n${errors.join('\n')}`;
+  console.error('[utilisBTC]', errMsg);
+  throw new Error(errMsg);
 }
 
 // ── Public Write Methods ────────────────────────────────
