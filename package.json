@@ -1,0 +1,23 @@
+{
+  "name": "hodllend",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "HodlLend — BTC-Collateralized Lending on Bitcoin L1. Lock BTC, borrow USDT. Lend USDT, earn interest. All on OP_NET.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^7.1.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "@vitejs/plugin-react": "^4.3.4",
+    "vite": "^6.0.0"
+  }
+}
