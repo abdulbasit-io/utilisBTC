@@ -2,9 +2,9 @@
 // HodlLend Constants & Configuration
 // ═══════════════════════════════════════════════════════════
 
-// Network config — OP_NET regtest for development
-export const NETWORK = 'regtest';
-export const RPC_URL = 'https://regtest.opnet.org';
+// Network config — OP_NET testnet for deployment
+export const NETWORK = 'testnet';
+export const RPC_URL = 'https://testnet.opnet.org';
 
 // Platform parameters
 export const MIN_COLLATERAL_RATIO = 1.5;       // 150% minimum collateralization

@@ -13,7 +13,7 @@ const RPC_ENDPOINTS = {
 };
 
 let providerInstance = null;
-let currentNetwork = 'regtest';
+let currentNetwork = 'testnet';
 
 /**
  * Get or create the JSONRpcProvider singleton
