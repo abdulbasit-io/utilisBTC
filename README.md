@@ -7,6 +7,20 @@ Borrow stablecoins against your BTC. Lend USDT and earn yield. No banks. No brid
 🌐 **Live:** [hodllend.vercel.app](https://hodllend.vercel.app)  
 📜 **Contract:** `opt1sqrpxenjta0hgpdzr32jc6gucr3llwv6scvn0p5ha` (OP_NET Testnet)
 
+## Demo
+
+### Landing Page
+![Landing Page](docs/screenshots/landing-hero.png)
+
+### Why HodlLend
+![Why HodlLend](docs/screenshots/why-hodllend.png)
+
+### Borrower Dashboard
+![Borrower Dashboard](docs/screenshots/borrower-dashboard.png)
+
+### Lender Dashboard
+![Lender Dashboard](docs/screenshots/lender-dashboard.png)
+
 ---
 
 ## What is HodlLend?
