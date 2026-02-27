@@ -5,7 +5,6 @@
 HodlLend is a trustless peer-to-peer lending protocol built on Bitcoin L1 using OP_NET. Lock your BTC as collateral to borrow USDT, or lend your surplus USDT to earn interest — all without intermediaries.
 
 ## 🔥 Features
-
 ### For Borrowers
 - **Lock BTC as collateral** — keep your Bitcoin position while accessing liquidity
 - **Borrow USDT** — get stablecoins at market rates with flexible durations (7–365 days)
