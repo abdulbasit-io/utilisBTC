@@ -46,10 +46,10 @@ export const STATUS_CONFIG = {
   [LOAN_STATUS.CANCELLED]: { label: 'Cancelled', badge: 'badge-danger', icon: '❌' },
 };
 
-// Contract addresses (update after deployment via OPWallet)
+// Contract addresses (loaded from .env — not committed to git)
 export const CONTRACTS = {
-  HODLLEND: '', // Set after deploying HodlLend.wasm
-  USDT_TOKEN: '', // Set if a USDT token is deployed
+  HODLLEND: import.meta.env.VITE_HODLLEND_CONTRACT || '',
+  USDT_TOKEN: import.meta.env.VITE_USDT_TOKEN || '',
 };
 
 // Links
