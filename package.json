@@ -10,6 +10,10 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@btc-vision/bitcoin": "^6.5.6",
+    "@btc-vision/transaction": "^1.7.31",
+    "buffer": "^6.0.3",
+    "opnet": "^1.7.34",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^7.1.0"

@@ -6,5 +6,23 @@ export default defineConfig({
   server: {
     port: 5173,
     open: false
-  }
+  },
+  resolve: {
+    alias: {
+      buffer: 'buffer/',
+      stream: 'stream-browserify',
+    }
+  },
+  define: {
+    'process.env': {},
+    global: 'globalThis',
+  },
+  optimizeDeps: {
+    include: ['buffer'],
+    esbuildOptions: {
+      define: {
+        global: 'globalThis',
+      },
+    },
+  },
 })

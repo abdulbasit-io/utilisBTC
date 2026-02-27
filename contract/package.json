@@ -1,0 +1,24 @@
+{
+    "name": "hodllend-contract",
+    "version": "1.0.0",
+    "description": "HodlLend - BTC-Collateralized Lending Smart Contract for OP_NET",
+    "main": "index.js",
+    "scripts": {
+        "build:lending": "asc src/lending/index.ts --target lending --measure --uncheckedBehavior never"
+    },
+    "author": "HodlLend",
+    "license": "MIT",
+    "type": "module",
+    "dependencies": {
+        "@assemblyscript/loader": "^0.28.9",
+        "@btc-vision/as-bignum": "^0.1.2",
+        "@btc-vision/assemblyscript": "^0.29.2",
+        "@btc-vision/bitcoin": "^6.5.6",
+        "@btc-vision/btc-runtime": "^1.11.0-rc.9",
+        "@btc-vision/opnet-transform": "^1.2.0",
+        "typescript": "^5.9.3"
+    },
+    "resolutions": {
+        "@btc-vision/btc-runtime": "^1.11.0-beta.1"
+    }
+}

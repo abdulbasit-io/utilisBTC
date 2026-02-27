@@ -1,0 +1,174 @@
+{
+    "functions": [
+        {
+            "name": "createLoan",
+            "type": "Function",
+            "payable": false,
+            "onlyOwner": false,
+            "inputs": [
+                {
+                    "name": "collateralSats",
+                    "type": "UINT256"
+                },
+                {
+                    "name": "loanAmount",
+                    "type": "UINT256"
+                },
+                {
+                    "name": "durationDays",
+                    "type": "UINT256"
+                },
+                {
+                    "name": "interestRateBps",
+                    "type": "UINT256"
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "loanId",
+                    "type": "UINT256"
+                }
+            ]
+        },
+        {
+            "name": "fundLoan",
+            "type": "Function",
+            "payable": false,
+            "onlyOwner": false,
+            "inputs": [
+                {
+                    "name": "loanId",
+                    "type": "UINT256"
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "loanId",
+                    "type": "UINT256"
+                }
+            ]
+        },
+        {
+            "name": "repayLoan",
+            "type": "Function",
+            "payable": false,
+            "onlyOwner": false,
+            "inputs": [
+                {
+                    "name": "loanId",
+                    "type": "UINT256"
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "loanId",
+                    "type": "UINT256"
+                }
+            ]
+        },
+        {
+            "name": "liquidateLoan",
+            "type": "Function",
+            "payable": false,
+            "onlyOwner": false,
+            "inputs": [
+                {
+                    "name": "loanId",
+                    "type": "UINT256"
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "loanId",
+                    "type": "UINT256"
+                }
+            ]
+        },
+        {
+            "name": "cancelLoan",
+            "type": "Function",
+            "payable": false,
+            "onlyOwner": false,
+            "inputs": [
+                {
+                    "name": "loanId",
+                    "type": "UINT256"
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "loanId",
+                    "type": "UINT256"
+                }
+            ]
+        },
+        {
+            "name": "getLoan",
+            "type": "Function",
+            "payable": false,
+            "onlyOwner": false,
+            "inputs": [
+                {
+                    "name": "loanId",
+                    "type": "UINT256"
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "borrower",
+                    "type": "UINT256"
+                },
+                {
+                    "name": "lender",
+                    "type": "UINT256"
+                },
+                {
+                    "name": "collateral",
+                    "type": "UINT256"
+                },
+                {
+                    "name": "amount",
+                    "type": "UINT256"
+                },
+                {
+                    "name": "interestBps",
+                    "type": "UINT256"
+                },
+                {
+                    "name": "duration",
+                    "type": "UINT256"
+                },
+                {
+                    "name": "status",
+                    "type": "UINT256"
+                },
+                {
+                    "name": "createdAt",
+                    "type": "UINT256"
+                },
+                {
+                    "name": "fundedAt",
+                    "type": "UINT256"
+                },
+                {
+                    "name": "repayment",
+                    "type": "UINT256"
+                }
+            ]
+        },
+        {
+            "name": "getLoanCount",
+            "type": "Function",
+            "payable": false,
+            "onlyOwner": false,
+            "inputs": [],
+            "outputs": [
+                {
+                    "name": "count",
+                    "type": "UINT256"
+                }
+            ]
+        }
+    ],
+    "events": []
+}
