@@ -16,9 +16,8 @@ export default function LendModal({ loan, onClose, onFunded, chainStatus }) {
   const handleFund = async () => {
     setError('');
 
-    // Skip balance check when using real wallet (USDT token contract not yet integrated)
-    if (!isRealWallet && loan.usdtAmount > usdtBalance) {
-      return setError('Insufficient USDT balance');
+    if (loan.usdtAmount > usdtBalance) {
+      return setError(`Insufficient HODL balance. You have ${usdtBalance.toFixed(2)} HODL, need ${loan.usdtAmount.toFixed(2)} HODL.`);
     }
 
     setIsSubmitting(true);
@@ -113,8 +112,24 @@ export default function LendModal({ loan, onClose, onFunded, chainStatus }) {
             color: 'var(--color-info)',
             lineHeight: 1.6,
           }}>
-            ℹ️ <strong>Protection:</strong> If the borrower fails to repay within {loan.durationDays} days, 
+            ℹ️ <strong>Protection:</strong> If the borrower fails to repay within {loan.durationDays} days,
             you can liquidate their {formatBTC(loan.btcCollateral)} collateral (worth {formatUSD(collateralValueUSD)}).
+          </div>
+
+          <div style={{
+            padding: 'var(--space-3) var(--space-4)',
+            background: 'var(--color-bg-glass)',
+            border: '1px solid rgba(255,255,255,0.08)',
+            borderRadius: 'var(--radius-md)',
+            fontSize: 'var(--font-size-xs)',
+            color: 'var(--color-text-secondary)',
+            display: 'flex',
+            justifyContent: 'space-between',
+          }}>
+            <span>Your HODL balance</span>
+            <span style={{ color: usdtBalance >= loan.usdtAmount ? 'var(--color-success)' : 'var(--color-danger)', fontWeight: 600 }}>
+              {formatUSDT(usdtBalance)}
+            </span>
           </div>
 
           {error && (

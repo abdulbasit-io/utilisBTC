@@ -1,7 +1,6 @@
 import { u256 } from '@btc-vision/as-bignum/assembly';
 import {
     Address,
-    BitcoinAddresses,
     Blockchain,
     BytesWriter,
     Calldata,
@@ -56,10 +55,6 @@ const BASIS_POINTS: u256 = u256.fromU64(10000);
 const PLATFORM_FEE_BPS: u256 = u256.fromU64(200);  // 2%
 const BLOCKS_PER_DAY: u256 = u256.fromU64(144);     // ~144 Bitcoin blocks per day
 
-// Network HRP for P2OP address encoding (bech32Opnet prefix)
-// 'opt' → testnet (opt1...), 'op' → mainnet (op1...)
-const OPNET_HRP: string = 'opt';
-
 @final
 export class utilisBTC extends OP20 {
     private loanCounter: StoredU256;
@@ -87,6 +82,22 @@ export class utilisBTC extends OP20 {
 
     public override onUpdate(_calldata: Calldata): void {
         super.onUpdate(_calldata);
+    }
+
+    // ─── Address Helpers ───────────────────────────────────
+    // Reverse of u256.fromUint8ArrayBE: recover original 32 address bytes from stored hash.
+    // fromUint8ArrayBE maps: bytes[0..7]→hi2, [8..15]→hi1, [16..23]→lo2, [24..31]→lo1
+    private u256ToAddr(v: u256): Address {
+        const buf = new Uint8Array(32);
+        buf[0]  = u8(v.hi2 >> 56); buf[1]  = u8(v.hi2 >> 48); buf[2]  = u8(v.hi2 >> 40); buf[3]  = u8(v.hi2 >> 32);
+        buf[4]  = u8(v.hi2 >> 24); buf[5]  = u8(v.hi2 >> 16); buf[6]  = u8(v.hi2 >> 8);  buf[7]  = u8(v.hi2);
+        buf[8]  = u8(v.hi1 >> 56); buf[9]  = u8(v.hi1 >> 48); buf[10] = u8(v.hi1 >> 40); buf[11] = u8(v.hi1 >> 32);
+        buf[12] = u8(v.hi1 >> 24); buf[13] = u8(v.hi1 >> 16); buf[14] = u8(v.hi1 >> 8);  buf[15] = u8(v.hi1);
+        buf[16] = u8(v.lo2 >> 56); buf[17] = u8(v.lo2 >> 48); buf[18] = u8(v.lo2 >> 40); buf[19] = u8(v.lo2 >> 32);
+        buf[20] = u8(v.lo2 >> 24); buf[21] = u8(v.lo2 >> 16); buf[22] = u8(v.lo2 >> 8);  buf[23] = u8(v.lo2);
+        buf[24] = u8(v.lo1 >> 56); buf[25] = u8(v.lo1 >> 48); buf[26] = u8(v.lo1 >> 40); buf[27] = u8(v.lo1 >> 32);
+        buf[28] = u8(v.lo1 >> 24); buf[29] = u8(v.lo1 >> 16); buf[30] = u8(v.lo1 >> 8);  buf[31] = u8(v.lo1);
+        return changetype<Address>(buf);
     }
 
     // ─── Storage Helpers ───────────────────────────────────
@@ -126,23 +137,11 @@ export class utilisBTC extends OP20 {
         if (loanAmount.isZero()) throw new Revert('Amount must be > 0');
         if (durationDays.isZero()) throw new Revert('Duration must be > 0');
 
-        // Verify BTC collateral was actually sent to this contract in this transaction.
-        // The contract's P2OP address is derived from its 32-byte address hash via P2TR encoding.
-        const contractP2OP: string = BitcoinAddresses.p2trKeyPathAddress(
-            Blockchain.contractAddress,
-            OPNET_HRP,
-        );
-        const txOutputs = Blockchain.tx.outputs;
-        let btcSent: u64 = 0;
-        for (let i = 0; i < txOutputs.length; i++) {
-            const out = txOutputs[i];
-            if (out.hasTo && out.to == contractP2OP) {
-                btcSent += out.value;
-            }
-        }
-        if (btcSent < collateral.toU64()) {
-            throw new Revert('BTC collateral not sent to contract');
-        }
+        // Lock collateral: transfer HODL tokens from borrower into this contract (escrow).
+        // This is the staking pattern — borrower's tokens are held by the contract
+        // and released back on repay/cancel, or sent to lender on liquidation.
+        const borrowerAddr: Address = Blockchain.tx.sender;
+        this._transfer(borrowerAddr, Blockchain.contractAddress, collateral);
 
         // Calculate interest: (amount * rateBps * days) / (365 * 10000)
         const num: u256 = SafeMath.mul(SafeMath.mul(loanAmount, interestBps), durationDays);
@@ -163,8 +162,7 @@ export class utilisBTC extends OP20 {
         const durationBlocks: u256 = SafeMath.mul(durationDays, BLOCKS_PER_DAY);
 
         // Store loan data — Address extends Uint8Array, convert to u256 for storage
-        const sender: Address = Blockchain.tx.sender;
-        const borrowerHash: u256 = u256.fromUint8ArrayBE(sender);
+        const borrowerHash: u256 = u256.fromUint8ArrayBE(borrowerAddr);
         this.storeLoanField(loanId, F_BORROWER, borrowerHash);
         this.storeLoanField(loanId, F_LENDER, u256.Zero);
         this.storeLoanField(loanId, F_COLLATERAL, collateral);
@@ -196,6 +194,12 @@ export class utilisBTC extends OP20 {
         const lenderHash: u256 = u256.fromUint8ArrayBE(Blockchain.tx.sender);
         if (u256.eq(borrowerHash, lenderHash)) throw new Revert('Cannot fund own loan');
 
+        // Transfer HODL tokens from lender to borrower
+        const lender: Address = Blockchain.tx.sender;
+        const borrower: Address = this.u256ToAddr(borrowerHash);
+        const loanAmount: u256 = this.readLoanField(loanId, F_AMOUNT);
+        this._transfer(lender, borrower, loanAmount);
+
         this.storeLoanField(loanId, F_LENDER, lenderHash);
         this.storeLoanField(loanId, F_STATUS, STATUS_ACTIVE);
         this.storeLoanField(loanId, F_FUNDED_AT, u256.fromU64(Blockchain.block.number));
@@ -219,6 +223,17 @@ export class utilisBTC extends OP20 {
         const borrowerHash: u256 = this.readLoanField(loanId, F_BORROWER);
         const callerHash: u256 = u256.fromUint8ArrayBE(Blockchain.tx.sender);
         if (!u256.eq(borrowerHash, callerHash)) throw new Revert('Only borrower can repay');
+
+        // Transfer repayment (principal + interest + fee) from borrower to lender
+        const borrower: Address = Blockchain.tx.sender;
+        const lenderHash: u256 = this.readLoanField(loanId, F_LENDER);
+        const lender: Address = this.u256ToAddr(lenderHash);
+        const repayment: u256 = this.readLoanField(loanId, F_REPAYMENT);
+        this._transfer(borrower, lender, repayment);
+
+        // Return collateral: release locked HODL from escrow back to borrower
+        const collateral: u256 = this.readLoanField(loanId, F_COLLATERAL);
+        this._transfer(Blockchain.contractAddress, borrower, collateral);
 
         this.storeLoanField(loanId, F_STATUS, STATUS_REPAID);
 
@@ -249,6 +264,11 @@ export class utilisBTC extends OP20 {
         const currentBlock: u256 = u256.fromU64(Blockchain.block.number);
         if (u256.lt(currentBlock, expiresAt)) throw new Revert('Loan not expired');
 
+        // Seize collateral: transfer locked HODL from contract escrow to lender
+        const lender: Address = this.u256ToAddr(lenderHash);
+        const collateral: u256 = this.readLoanField(loanId, F_COLLATERAL);
+        this._transfer(Blockchain.contractAddress, lender, collateral);
+
         this.storeLoanField(loanId, F_STATUS, STATUS_LIQUIDATED);
 
         const writer = new BytesWriter(32);
@@ -270,6 +290,11 @@ export class utilisBTC extends OP20 {
         const borrowerHash: u256 = this.readLoanField(loanId, F_BORROWER);
         const callerHash: u256 = u256.fromUint8ArrayBE(Blockchain.tx.sender);
         if (!u256.eq(borrowerHash, callerHash)) throw new Revert('Only borrower can cancel');
+
+        // Return collateral: release locked HODL from escrow back to borrower
+        const borrower: Address = Blockchain.tx.sender;
+        const collateral: u256 = this.readLoanField(loanId, F_COLLATERAL);
+        this._transfer(Blockchain.contractAddress, borrower, collateral);
 
         this.storeLoanField(loanId, F_STATUS, STATUS_CANCELLED);
 

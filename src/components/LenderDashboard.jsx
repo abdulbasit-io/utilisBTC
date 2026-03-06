@@ -177,7 +177,7 @@ export default function LenderDashboard() {
         {/* Stats */}
         <div className="dashboard-stats">
           <div className="glass-card dashboard-stat">
-            <div className="dashboard-stat-label">USDT Balance</div>
+            <div className="dashboard-stat-label">HODL Balance</div>
             <div className="dashboard-stat-value" style={{ color: 'var(--color-success)' }}>
               {formatUSDT(usdtBalance)}
             </div>

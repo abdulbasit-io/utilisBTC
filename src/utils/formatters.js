@@ -24,10 +24,10 @@ export function formatBTC(amount) {
 }
 
 /**
- * Format USDT amount
+ * Format HODL token amount (utilisBTC's native OP20 token used as the loan currency)
  */
 export function formatUSDT(amount) {
-  return `${parseFloat(amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDT`;
+  return `${parseFloat(amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} HODL`;
 }
 
 /**

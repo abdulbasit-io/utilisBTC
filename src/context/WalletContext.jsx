@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, useCallback } from 'rea
 import { MOCK_BTC_PRICE_USD, NETWORK, LINKS } from '../utils/constants';
 import { getProvider, getBalance as providerGetBalance } from '../utils/opnetProvider';
 import { getBorrowerLoans } from '../utils/lendingEngine';
+import { getHODLBalanceOnChain } from '../utils/contractService';
 
 const WalletContext = createContext(null);
 
@@ -42,7 +43,7 @@ export function WalletProvider({ children }) {
     }
   }, []);
 
-  // Fetch on-chain balance
+  // Fetch on-chain BTC balance
   const fetchOnChainBalance = useCallback(async (addr) => {
     try {
       const balance = await providerGetBalance(addr);
@@ -52,6 +53,16 @@ export function WalletProvider({ children }) {
       }
     } catch (err) {
       console.warn('Failed to fetch on-chain balance:', err);
+    }
+  }, []);
+
+  // Fetch HODL token balance from the utilisBTC OP20 contract
+  const fetchHODLBalance = useCallback(async (addr) => {
+    try {
+      const hodl = await getHODLBalanceOnChain(addr);
+      if (hodl !== null) setUsdtBalance(hodl);
+    } catch (err) {
+      console.warn('Failed to fetch HODL balance:', err);
     }
   }, []);
 
@@ -71,6 +82,7 @@ export function WalletProvider({ children }) {
         
         if (data.walletType === 'opwallet' && data.address) {
           fetchOnChainBalance(data.address);
+          fetchHODLBalance(data.address);
         }
       } catch {
         localStorage.removeItem('utilisbtc_wallet');
@@ -111,11 +123,12 @@ export function WalletProvider({ children }) {
 
         setAddress(addr);
         setBtcBalance(btcBal);
-        setUsdtBalance(0); // Real USDT balance requires the USDT token contract — shown as 0 until available
+        setUsdtBalance(0);
         setIsConnected(true);
         setNetwork(NETWORK);
         setWalletType('opwallet');
         updateLockedBalance(addr);
+        fetchHODLBalance(addr);
 
         localStorage.setItem('utilisbtc_wallet', JSON.stringify({
           address: addr,
@@ -159,11 +172,12 @@ export function WalletProvider({ children }) {
           }
         }
         await fetchOnChainBalance(address);
+        await fetchHODLBalance(address);
       } catch (err) {
         console.warn('Balance refresh failed:', err);
       }
     }
-  }, [isConnected, address, walletType, fetchOnChainBalance, updateLockedBalance]);
+  }, [isConnected, address, walletType, fetchOnChainBalance, fetchHODLBalance, updateLockedBalance]);
 
   // Dismiss install prompt
   const dismissInstallPrompt = useCallback(() => {
