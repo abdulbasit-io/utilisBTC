@@ -18,6 +18,7 @@ export default function Navbar() {
           <Link to="/" className={isActive('/')}>Home</Link>
           <Link to="/borrow" className={isActive('/borrow')}>Borrow</Link>
           <Link to="/lend" className={isActive('/lend')}>Lend</Link>
+          <Link to="/swap" className={isActive('/swap')}>Swap</Link>
         </div>
 
         <div className="navbar-actions">

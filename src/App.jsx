@@ -8,6 +8,7 @@ import CTASection from './components/CTASection';
 import Footer from './components/Footer';
 import BorrowerDashboard from './components/BorrowerDashboard';
 import LenderDashboard from './components/LenderDashboard';
+import SwapPage from './components/SwapPage';
 
 function LandingPage() {
   return (
@@ -30,6 +31,7 @@ export default function App() {
             <Route path="/" element={<LandingPage />} />
             <Route path="/borrow" element={<BorrowerDashboard />} />
             <Route path="/lend" element={<LenderDashboard />} />
+            <Route path="/swap" element={<SwapPage />} />
           </Routes>
         </main>
         <Footer />
