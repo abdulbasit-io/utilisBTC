@@ -6,32 +6,29 @@ import { formatBTC, formatUSDT, formatPercent, formatUSD } from '../utils/format
 import { MOCK_BTC_PRICE_USD, PLATFORM_FEE_RATE } from '../utils/constants';
 
 export default function LendModal({ loan, onClose, onFunded, chainStatus }) {
-  const { address, usdtBalance, isRealWallet } = useWallet();
+  const { address, usdtBalance, isRealWallet } = useWallet(); // isRealWallet = OPWallet connected
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
 
   const collateralValueUSD = loan.btcCollateral * MOCK_BTC_PRICE_USD;
-  const lenderEarnings = loan.interest - (loan.interest * PLATFORM_FEE_RATE);
+  const lenderEarnings = (loan.interest || 0) * (1 - PLATFORM_FEE_RATE);
 
   const handleFund = async () => {
     setError('');
 
-    if (loan.usdtAmount > usdtBalance) {
+    // Skip balance check when using real wallet (USDT token contract not yet integrated)
+    if (!isRealWallet && loan.usdtAmount > usdtBalance) {
       return setError('Insufficient USDT balance');
     }
 
     setIsSubmitting(true);
     try {
-      // Try on-chain first
-      if (isRealWallet && chainStatus === 'online') {
-        try {
-          await fundLoanOnChain(address, loan.id);
-          onFunded?.();
-          onClose();
-          return;
-        } catch (e) {
-          console.warn('On-chain fund failed, using local:', e);
-        }
+      // Always try on-chain first when OPWallet is connected
+      if (isRealWallet) {
+        await fundLoanOnChain(address, loan.id);
+        onFunded?.();
+        onClose();
+        return;
       }
 
       // Fallback: local
@@ -71,10 +68,12 @@ export default function LendModal({ loan, onClose, onFunded, chainStatus }) {
               <span className="info-label">Collateral Value</span>
               <span className="info-value">{formatUSD(collateralValueUSD)}</span>
             </div>
-            <div className="info-row">
-              <span className="info-label">Collateral Ratio</span>
-              <span className="info-value" style={{ color: 'var(--color-success)' }}>{formatPercent(loan.collateralRatio)}</span>
-            </div>
+            {loan.collateralRatio > 0 && (
+              <div className="info-row">
+                <span className="info-label">Collateral Ratio</span>
+                <span className="info-value" style={{ color: 'var(--color-success)' }}>{formatPercent(loan.collateralRatio)}</span>
+              </div>
+            )}
             <div className="info-row">
               <span className="info-label">Duration</span>
               <span className="info-value">{loan.durationDays} days</span>

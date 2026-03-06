@@ -26,29 +26,34 @@ export default function LenderDashboard() {
   const [txPending, setTxPending] = useState(null);
 
   const loadData = useCallback(async () => {
-    seedDemoData(address);
+    // Only seed demo data for non-real wallets
+    if (!isRealWallet) seedDemoData(address);
+
     setAvailableLoans(getAvailableLoans());
     if (address) {
       setMyInvestments(getLenderLoans(address));
     }
 
-    // Try on-chain loans too
-    if (isRealWallet) {
-      try {
-        const onChainLoans = await getAllOnChainLoans();
-        if (onChainLoans.length > 0) {
-          const onChainPending = onChainLoans.filter(l => l.status === 'pending');
-          const onChainMine = onChainLoans.filter(l => l.lender === address);
-          if (onChainPending.length > 0) {
-            setAvailableLoans(prev => [...onChainPending, ...prev]);
-          }
-          if (onChainMine.length > 0) {
-            setMyInvestments(prev => [...onChainMine, ...prev]);
-          }
+    // Fetch on-chain loans and merge into the display lists
+    // On-chain pending loans go to marketplace; loans where lender matches go to investments
+    try {
+      const onChainLoans = await getAllOnChainLoans();
+      if (onChainLoans.length > 0) {
+        const onChainPending = onChainLoans.filter(l => l.status === 'pending');
+        // On-chain lender comparison: the stored lender is a hash, not a raw address.
+        // Show all active on-chain loans in investments so real funders can see them.
+        const onChainActive = onChainLoans.filter(l => l.status === 'active');
+
+        if (onChainPending.length > 0) {
+          // Prepend on-chain loans (they have onChain:true flag)
+          setAvailableLoans(prev => [...onChainPending, ...prev.filter(l => !l.onChain)]);
         }
-      } catch (e) {
-        console.warn('On-chain loan fetch failed:', e);
+        if (onChainActive.length > 0) {
+          setMyInvestments(prev => [...onChainActive, ...prev.filter(l => !l.onChain)]);
+        }
       }
+    } catch (e) {
+      console.warn('On-chain loan fetch failed:', e);
     }
   }, [address, isRealWallet]);
 

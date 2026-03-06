@@ -47,19 +47,15 @@ export default function CreateLoanModal({ onClose, onCreated, chainStatus }) {
 
     setIsSubmitting(true);
     try {
-      // Try on-chain first if wallet connected and chain available
-      if (isRealWallet && chainStatus === 'online') {
-        try {
-          const collateralSats = Math.round(btcVal * 1e8);
-          const loanSats = Math.round(usdtVal * 1e8);
-          const rateBps = Math.round(rateVal * 10000);
-          await createLoanOnChain(address, collateralSats, loanSats, durationVal, rateBps);
-          onCreated?.();
-          onClose();
-          return;
-        } catch (e) {
-          console.warn('On-chain createLoan failed, using local:', e);
-        }
+      // Always try on-chain first when OPWallet is connected
+      if (isRealWallet) {
+        const collateralSats = Math.round(btcVal * 1e8);
+        const loanSats = Math.round(usdtVal * 1e8);
+        const rateBps = Math.round(rateVal * 10000);
+        await createLoanOnChain(address, collateralSats, loanSats, durationVal, rateBps);
+        onCreated?.();
+        onClose();
+        return;
       }
 
       // Fallback: local simulation

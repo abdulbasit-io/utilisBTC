@@ -14,7 +14,7 @@ export default function LoanCard({ loan, actions, showBorrower = false, showLend
           {formatBTC(loan.btcCollateral)}
         </div>
         <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-muted)' }}>
-          Ratio: {formatPercent(loan.collateralRatio)}
+          {loan.collateralRatio > 0 ? `Ratio: ${formatPercent(loan.collateralRatio)}` : ''}
         </div>
       </div>
 
@@ -42,7 +42,7 @@ export default function LoanCard({ loan, actions, showBorrower = false, showLend
           }
         </div>
         <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-muted)' }}>
-          Repay: {formatUSDT(loan.totalRepayment)}
+          {loan.totalRepayment > 0 ? `Repay: ${formatUSDT(loan.totalRepayment)}` : ''}
         </div>
       </div>
 

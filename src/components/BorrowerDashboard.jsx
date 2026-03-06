@@ -1,9 +1,15 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useWallet } from '../context/WalletContext';
-import { getBorrowerLoans, repayLoan, cancelLoan, seedDemoData, createLoanRequest } from '../utils/lendingEngine';
+import { getBorrowerLoans, repayLoan, cancelLoan, seedDemoData } from '../utils/lendingEngine';
 import { formatBTC, formatUSDT, formatUSD } from '../utils/formatters';
 import { MOCK_BTC_PRICE_USD } from '../utils/constants';
-import { isContractAvailable, getContractAddress, getOnChainLoanCount } from '../utils/contractService';
+import {
+  isContractAvailable,
+  getContractAddress,
+  getOnChainLoanCount,
+  repayLoanOnChain,
+  cancelLoanOnChain,
+} from '../utils/contractService';
 import LoanCard from './LoanCard';
 import CreateLoanModal from './CreateLoanModal';
 
@@ -17,10 +23,11 @@ export default function BorrowerDashboard() {
 
   const loadLoans = useCallback(() => {
     if (!address) return;
-    seedDemoData(address);
+    // Only seed demo data when not using a real wallet
+    if (!isRealWallet) seedDemoData(address);
     setLoans(getBorrowerLoans(address));
     updateLockedBalance(address);
-  }, [address, updateLockedBalance]);
+  }, [address, updateLockedBalance, isRealWallet]);
 
   useEffect(() => { loadLoans(); }, [loadLoans]);
 
@@ -42,18 +49,47 @@ export default function BorrowerDashboard() {
     else setChainStatus('offline');
   }, [isRealWallet]);
 
-  const handleRepay = (loanId) => {
+  const [txPending, setTxPending] = useState(null);
+
+  const handleRepay = async (loan) => {
+    // On-chain loan: go to chain. Local loan: use simulation.
+    if (loan.onChain && isRealWallet && chainStatus === 'online') {
+      setTxPending('Repaying loan on-chain...');
+      try {
+        await repayLoanOnChain(address, loan.id);
+        setTxPending(null);
+        loadLoans();
+        return;
+      } catch (e) {
+        setTxPending(null);
+        alert(`On-chain repay failed: ${e.message}`);
+        return;
+      }
+    }
     try {
-      repayLoan(loanId);
+      repayLoan(loan.id);
       loadLoans();
     } catch (err) {
       alert(err.message);
     }
   };
 
-  const handleCancel = (loanId) => {
+  const handleCancel = async (loan) => {
+    if (loan.onChain && isRealWallet && chainStatus === 'online') {
+      setTxPending('Cancelling loan on-chain...');
+      try {
+        await cancelLoanOnChain(address, loan.id);
+        setTxPending(null);
+        loadLoans();
+        return;
+      } catch (e) {
+        setTxPending(null);
+        alert(`On-chain cancel failed: ${e.message}`);
+        return;
+      }
+    }
     try {
-      cancelLoan(loanId);
+      cancelLoan(loan.id);
       loadLoans();
     } catch (err) {
       alert(err.message);
@@ -202,12 +238,20 @@ export default function BorrowerDashboard() {
                 actions={
                   <>
                     {loan.status === 'active' && (
-                      <button className="btn btn-success btn-sm" onClick={() => handleRepay(loan.id)}>
+                      <button
+                        className="btn btn-success btn-sm"
+                        onClick={() => handleRepay(loan)}
+                        disabled={!!txPending}
+                      >
                         💳 Repay
                       </button>
                     )}
                     {loan.status === 'pending' && (
-                      <button className="btn btn-danger btn-sm" onClick={() => handleCancel(loan.id)}>
+                      <button
+                        className="btn btn-danger btn-sm"
+                        onClick={() => handleCancel(loan)}
+                        disabled={!!txPending}
+                      >
                         ✕ Cancel
                       </button>
                     )}
@@ -218,11 +262,27 @@ export default function BorrowerDashboard() {
           </div>
         )}
 
+        {/* Pending tx banner */}
+        {txPending && (
+          <div style={{
+            padding: 'var(--space-3) var(--space-4)',
+            background: 'var(--color-accent-subtle)',
+            border: '1px solid rgba(247, 147, 26, 0.3)',
+            borderRadius: 'var(--radius-md)',
+            fontSize: 'var(--font-size-sm)',
+            color: 'var(--color-accent)',
+            marginTop: 'var(--space-4)',
+          }}>
+            ⟳ {txPending}
+          </div>
+        )}
+
         {/* Create Modal */}
         {showCreateModal && (
           <CreateLoanModal
             onClose={() => setShowCreateModal(false)}
             onCreated={loadLoans}
+            chainStatus={chainStatus}
           />
         )}
       </div>

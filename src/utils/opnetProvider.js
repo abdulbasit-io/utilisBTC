@@ -1,29 +1,22 @@
 // ═══════════════════════════════════════════════════════════
 // OP_NET Provider Service
-// Connects to OP_NET RPC and provides contract interaction
 // ═══════════════════════════════════════════════════════════
 
 import { JSONRpcProvider } from 'opnet';
+import { networks } from '@btc-vision/bitcoin';
 
-// RPC endpoints by network
-const RPC_ENDPOINTS = {
-  regtest: 'https://regtest.opnet.org',
-  testnet: 'https://testnet.opnet.org',
-  mainnet: 'https://mainnet.opnet.org',
-};
+const RPC_URL = 'https://testnet.opnet.org';
 
 let providerInstance = null;
-let currentNetwork = 'testnet';
 
 /**
- * Get or create the JSONRpcProvider singleton
+ * Get or create the JSONRpcProvider singleton.
+ * Uses networks.testnet — networks.opnetTestnet does NOT exist in @btc-vision/bitcoin.
  */
-export function getProvider(network = 'regtest') {
-  if (!providerInstance || currentNetwork !== network) {
-    const url = RPC_ENDPOINTS[network] || RPC_ENDPOINTS.regtest;
+export function getProvider() {
+  if (!providerInstance) {
     try {
-      providerInstance = new JSONRpcProvider(url);
-      currentNetwork = network;
+      providerInstance = new JSONRpcProvider(RPC_URL, networks.testnet);
     } catch (err) {
       console.warn('Failed to create OP_NET provider:', err);
       providerInstance = null;
@@ -53,8 +46,7 @@ export async function getBalance(address) {
   const provider = getProvider();
   if (!provider) return null;
   try {
-    const balance = await provider.getBalance(address);
-    return balance;
+    return await provider.getBalance(address);
   } catch (err) {
     console.warn('Failed to get balance:', err);
     return null;
@@ -66,18 +58,9 @@ export async function getBalance(address) {
  */
 export function closeProvider() {
   if (providerInstance) {
-    try {
-      providerInstance.close();
-    } catch (err) {
-      // ignore
-    }
+    try { providerInstance.close(); } catch { /* ignore */ }
     providerInstance = null;
   }
 }
 
-export default {
-  getProvider,
-  getBlockNumber,
-  getBalance,
-  closeProvider,
-};
+export default { getProvider, getBlockNumber, getBalance, closeProvider };

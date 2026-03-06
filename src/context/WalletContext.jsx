@@ -27,14 +27,15 @@ export function WalletProvider({ children }) {
     return typeof window !== 'undefined' && window.opnet;
   };
 
-  // Calculate locked collateral from active loans
+  // Calculate locked collateral from local simulation loans
+  // (on-chain locked amounts are visible through the chain balance directly)
   const updateLockedBalance = useCallback((addr) => {
     if (!addr) return;
     try {
       const loans = getBorrowerLoans(addr);
       const locked = loans
         .filter(l => l.status === 'pending' || l.status === 'active')
-        .reduce((sum, l) => sum + l.btcCollateral, 0);
+        .reduce((sum, l) => sum + (l.btcCollateral || 0), 0);
       setLockedBalance(locked);
     } catch {
       setLockedBalance(0);
@@ -63,7 +64,7 @@ export function WalletProvider({ children }) {
         setIsConnected(true);
         setAddress(data.address);
         setBtcBalance(data.btcBalance);
-        setUsdtBalance(data.usdtBalance);
+        setUsdtBalance(0);
         setNetwork(data.network || NETWORK);
         setWalletType(data.walletType || 'opwallet');
         updateLockedBalance(data.address);
@@ -110,7 +111,7 @@ export function WalletProvider({ children }) {
 
         setAddress(addr);
         setBtcBalance(btcBal);
-        setUsdtBalance(10000); // Mock USDT until token deployed
+        setUsdtBalance(0); // Real USDT balance requires the USDT token contract — shown as 0 until available
         setIsConnected(true);
         setNetwork(NETWORK);
         setWalletType('opwallet');
@@ -119,7 +120,6 @@ export function WalletProvider({ children }) {
         localStorage.setItem('utilisbtc_wallet', JSON.stringify({
           address: addr,
           btcBalance: btcBal,
-          usdtBalance: 10000,
           network: NETWORK,
           walletType: 'opwallet',
         }));
