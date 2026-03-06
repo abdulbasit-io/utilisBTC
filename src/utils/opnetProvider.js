@@ -11,7 +11,8 @@ let providerInstance = null;
 
 /**
  * Get or create the JSONRpcProvider singleton.
- * Uses networks.testnet — networks.opnetTestnet does NOT exist in @btc-vision/bitcoin.
+ * @btc-vision/bitcoin v6.5.6 exports only 'regtest' and 'testnet'.
+ * networks.testnet has bech32Opnet:'opt' which matches OPNet testnet (opt1...) addresses.
  */
 export function getProvider() {
   if (!providerInstance) {

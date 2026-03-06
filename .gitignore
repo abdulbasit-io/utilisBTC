@@ -36,3 +36,4 @@ yarn-error.log*
 mnemonic.txt
 seed.txt
 contract/node_modules/
+.claude

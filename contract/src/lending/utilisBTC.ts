@@ -1,6 +1,7 @@
 import { u256 } from '@btc-vision/as-bignum/assembly';
 import {
     Address,
+    BitcoinAddresses,
     Blockchain,
     BytesWriter,
     Calldata,
@@ -54,6 +55,10 @@ const STATUS_CANCELLED: u256 = u256.fromU64(4);
 const BASIS_POINTS: u256 = u256.fromU64(10000);
 const PLATFORM_FEE_BPS: u256 = u256.fromU64(200);  // 2%
 const BLOCKS_PER_DAY: u256 = u256.fromU64(144);     // ~144 Bitcoin blocks per day
+
+// Network HRP for P2OP address encoding (bech32Opnet prefix)
+// 'opt' → testnet (opt1...), 'op' → mainnet (op1...)
+const OPNET_HRP: string = 'opt';
 
 @final
 export class utilisBTC extends OP20 {
@@ -113,13 +118,31 @@ export class utilisBTC extends OP20 {
     public createLoan(calldata: Calldata): BytesWriter {
         const collateral: u256 = calldata.readU256();
         const loanAmount: u256 = calldata.readU256();
-        const durationDaare you donw with that? This is the deployed contract address: "opt1sqrpxenjta0hgpdzr32jc6gucr3llwv6scvn0p5ha", update the codebase as necessary but make sure the address is in a .env file that will not be commited or push. after you're done with that, we have some fixing to do on the frontendys: u256 = calldata.readU256();
+        const durationDays: u256 = calldata.readU256();
         const interestBps: u256 = calldata.readU256();
 
         // Validate
         if (collateral.isZero()) throw new Revert('Collateral must be > 0');
         if (loanAmount.isZero()) throw new Revert('Amount must be > 0');
         if (durationDays.isZero()) throw new Revert('Duration must be > 0');
+
+        // Verify BTC collateral was actually sent to this contract in this transaction.
+        // The contract's P2OP address is derived from its 32-byte address hash via P2TR encoding.
+        const contractP2OP: string = BitcoinAddresses.p2trKeyPathAddress(
+            Blockchain.contractAddress,
+            OPNET_HRP,
+        );
+        const txOutputs = Blockchain.tx.outputs;
+        let btcSent: u64 = 0;
+        for (let i = 0; i < txOutputs.length; i++) {
+            const out = txOutputs[i];
+            if (out.hasTo && out.to == contractP2OP) {
+                btcSent += out.value;
+            }
+        }
+        if (btcSent < collateral.toU64()) {
+            throw new Revert('BTC collateral not sent to contract');
+        }
 
         // Calculate interest: (amount * rateBps * days) / (365 * 10000)
         const num: u256 = SafeMath.mul(SafeMath.mul(loanAmount, interestBps), durationDays);

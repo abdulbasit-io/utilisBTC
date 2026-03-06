@@ -16,8 +16,8 @@ import {
 import utilisBTCABI from '../../contract/abis/utilisBTC.abi.json';
 import { getProvider } from './opnetProvider';
 
-// NOTE: networks.opnetTestnet does NOT exist in @btc-vision/bitcoin.
-// Verified: only networks.testnet works with the deployed contract address.
+// @btc-vision/bitcoin v6.5.6 only exports 'regtest' and 'testnet'.
+// networks.testnet has bech32Opnet:'opt' matching OPNet testnet (opt1...) addresses.
 function getNetworkConfig() {
   return networks.testnet;
 }
@@ -200,15 +200,71 @@ async function executeOnChain(methodName, args, senderAddress) {
 // ── Public Write Methods ────────────────────────────────
 
 /**
- * Create a loan on-chain
+ * Create a loan on-chain.
+ * Includes the BTC collateral as an extra output in the transaction so the
+ * contract's BTC-transfer verification check passes.
  */
 export async function createLoanOnChain(senderAddress, collateralSats, loanAmountSats, durationDays, interestRateBps) {
-  return executeOnChain('createLoan', [
-    BigInt(collateralSats),
-    BigInt(loanAmountSats),
-    BigInt(durationDays),
-    BigInt(interestRateBps),
-  ], senderAddress);
+  if (typeof window === 'undefined' || !window.opnet?.web3) {
+    throw new Error('OPWallet not detected. Please install OPWallet to submit transactions.');
+  }
+
+  const c = getContractInstance();
+  if (!c) throw new Error('Contract instance not available — check contract address in .env');
+
+  const collateralBigInt = BigInt(collateralSats);
+  const contractAddr = CONTRACTS.UTILISBTC;
+
+  // Tell the simulator about the collateral output so the contract's
+  // BTC-verification check sees it during simulation.
+  // Index 0 is reserved by OPNet; collateral output is at index 1.
+  c.setTransactionDetails({
+    inputs: [],
+    outputs: [
+      {
+        value: collateralBigInt,
+        index: 1,
+        flags: 1, // hasTo
+        to: contractAddr,
+      },
+    ],
+  });
+
+  console.log(`[utilisBTC] Simulating createLoan with ${collateralSats} sats collateral...`);
+
+  let simulation;
+  try {
+    simulation = await c.createLoan(
+      collateralBigInt,
+      BigInt(loanAmountSats),
+      BigInt(durationDays),
+      BigInt(interestRateBps),
+    );
+  } catch (e) {
+    throw new Error(`Simulation failed for createLoan: ${e.message}`);
+  }
+
+  if (simulation.revert) {
+    throw new Error(`Transaction would revert: ${simulation.revert}`);
+  }
+
+  console.log(`[utilisBTC] Simulation OK. Sending via OPWallet...`);
+
+  // Include the collateral BTC as a real output in the Bitcoin transaction.
+  const receipt = await simulation.sendTransaction({
+    signer: null,
+    mldsaSigner: null,
+    refundTo: senderAddress,
+    // Cap must cover collateral + fees; add 0.005 BTC buffer for fees
+    maximumAllowedSatToSpend: collateralBigInt + 500_000n,
+    network: getNetworkConfig(),
+    extraOutputs: [
+      { address: contractAddr, value: collateralBigInt },
+    ],
+  });
+
+  console.log(`[utilisBTC] Transaction sent:`, receipt.transactionId);
+  return receipt.transactionId;
 }
 
 /**
