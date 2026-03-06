@@ -168,6 +168,24 @@
                     "type": "UINT256"
                 }
             ]
+        },
+        {
+            "name": "balanceOf",
+            "type": "Function",
+            "payable": false,
+            "onlyOwner": false,
+            "inputs": [
+                {
+                    "name": "account",
+                    "type": "ADDRESS"
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "balance",
+                    "type": "UINT256"
+                }
+            ]
         }
     ],
     "events": []

@@ -64,6 +64,71 @@ function saveStats(stats) {
   localStorage.setItem(PLATFORM_STATS_KEY, JSON.stringify(stats));
 }
 
+// ── On-Chain Record Tracking ─────────────────────────────
+// After submitting an on-chain tx, save a local record immediately
+// so the dashboard shows the loan before the tx confirms on-chain.
+
+/**
+ * Save an optimistic local record for an on-chain loan submission.
+ * Used after createLoanOnChain / fundLoanOnChain to update the UI immediately.
+ */
+export function saveOnChainLoan({
+  borrower,
+  btcCollateral,
+  usdtAmount,
+  durationDays,
+  interestRate,
+  txHash,
+}) {
+  const interest = calcInterest(usdtAmount, interestRate, durationDays);
+  const platformFee = interest * PLATFORM_FEE_RATE;
+  const collateralValueUSD = btcCollateral * MOCK_BTC_PRICE_USD;
+  const ratio = usdtAmount > 0 ? collateralValueUSD / usdtAmount : 0;
+
+  const loan = {
+    id: txHash,
+    borrower,
+    lender: null,
+    btcCollateral: parseFloat(btcCollateral),
+    usdtAmount: parseFloat(usdtAmount),
+    durationDays: parseInt(durationDays),
+    interestRate: parseFloat(interestRate),
+    interest,
+    platformFee,
+    totalRepayment: usdtAmount + interest,
+    collateralRatio: ratio,
+    btcPriceAtCreation: MOCK_BTC_PRICE_USD,
+    status: LOAN_STATUS.PENDING,
+    createdAt: new Date().toISOString(),
+    fundedAt: null,
+    expiresAt: null,
+    repaidAt: null,
+    liquidatedAt: null,
+    txHash,
+    onChain: true,
+    updatedAt: new Date().toISOString(),
+  };
+
+  const loans = getLoans();
+  // Avoid duplicates
+  if (!loans.find(l => l.id === txHash)) {
+    loans.unshift(loan);
+    saveLoans(loans);
+  }
+  return loan;
+}
+
+/**
+ * Update the local record for an on-chain loan (e.g. mark active after funding).
+ */
+export function updateOnChainLoanStatus(txHash, status, extra = {}) {
+  try {
+    updateLoan(txHash, { status, onChain: true, ...extra });
+  } catch {
+    // Loan not in local store — nothing to update
+  }
+}
+
 // ── Core Operations ─────────────────────────────────────
 
 /**

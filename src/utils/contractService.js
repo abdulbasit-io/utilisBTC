@@ -6,6 +6,7 @@
 // signing to OPWallet — no manual wallet calls needed.
 
 import { getContract } from 'opnet';
+import { Address } from '@btc-vision/transaction';
 import { networks } from '@btc-vision/bitcoin';
 import {
   CONTRACTS,
@@ -24,26 +25,69 @@ function getNetworkConfig() {
 
 // ── Contract Instance ────────────────────────────────────
 
+// Build the normalised ABI once (shared between read and write instances)
+function buildAbi() {
+  const rawAbi = utilisBTCABI.functions || utilisBTCABI;
+  return Array.isArray(rawAbi)
+    ? rawAbi.map(fn => ({ ...fn, type: (fn.type || 'function').toLowerCase() }))
+    : rawAbi;
+}
+
+// Read-only contract instance (no sender needed — used for view calls)
 function getContractInstance() {
   const prov = getProvider();
   if (!prov || !CONTRACTS.UTILISBTC) return null;
-
   try {
-    // No sender needed for reads; for writes OPWallet provides the sender
-    // ABI JSON has {functions: [...], events: []} — SDK expects the functions array
-    // Also normalize type: 'Function' → 'function' (SDK requires lowercase)
-    const rawAbi = utilisBTCABI.functions || utilisBTCABI;
-    const abi = Array.isArray(rawAbi)
-      ? rawAbi.map(fn => ({ ...fn, type: (fn.type || 'function').toLowerCase() }))
-      : rawAbi;
-    return getContract(
-      CONTRACTS.UTILISBTC,
-      abi,
-      prov,
-      getNetworkConfig(),
-    );
+    return getContract(CONTRACTS.UTILISBTC, buildAbi(), prov, getNetworkConfig());
   } catch (e) {
     console.warn('Failed to create contract instance:', e);
+    return null;
+  }
+}
+
+// Write contract instance — resolves the sender Address so Blockchain.tx.sender
+// is non-zero during simulation (otherwise _transfer reverts with "Invalid sender").
+//
+// Strategy:
+//   1. Try provider.getPublicKeyInfo() — works for wallets with on-chain history
+//   2. Fall back to window.opnet.web3.getMLDSAPublicKey() — always available when
+//      OPWallet is connected, even for brand-new wallets with no on-chain activity
+async function getWriteContractInstance(senderAddress) {
+  const prov = getProvider();
+  if (!prov || !CONTRACTS.UTILISBTC) return null;
+
+  let sender = null;
+
+  // Attempt 1: RPC lookup (reliable for wallets that have transacted on OPNet)
+  try {
+    sender = await prov.getPublicKeyInfo(senderAddress, false);
+  } catch {
+    console.info('[utilisBTC] getPublicKeyInfo unavailable (fresh wallet?), trying OPWallet key...');
+  }
+
+  // Attempt 2: Read both public keys directly from OPWallet
+  // - window.opnet.web3.getMLDSAPublicKey() → ML-DSA key (required by OPNet)
+  // - window.opnet.getPublicKey()            → secp256k1 key (required for P2TR address derivation)
+  if (!sender && typeof window !== 'undefined' && window.opnet?.web3?.getMLDSAPublicKey) {
+    try {
+      const [mldsaHex, legacyHex] = await Promise.all([
+        window.opnet.web3.getMLDSAPublicKey(),
+        window.opnet.getPublicKey?.() ?? Promise.resolve(null),
+      ]);
+      if (mldsaHex) {
+        sender = Address.fromString(mldsaHex, legacyHex || undefined);
+      }
+    } catch (e) {
+      console.warn('[utilisBTC] OPWallet key fetch failed:', e);
+    }
+  }
+
+  if (!sender) return null;
+
+  try {
+    return getContract(CONTRACTS.UTILISBTC, buildAbi(), prov, getNetworkConfig(), sender);
+  } catch (e) {
+    console.warn('Failed to create write contract instance:', e);
     return null;
   }
 }
@@ -190,7 +234,7 @@ async function executeOnChain(methodName, args, senderAddress) {
     throw new Error('OPWallet not detected. Please install OPWallet to submit transactions.');
   }
 
-  const c = getContractInstance();
+  const c = await getWriteContractInstance(senderAddress);
   if (!c) throw new Error('Contract instance not available — check contract address in .env');
 
   console.log(`[utilisBTC] Simulating ${methodName}...`);
@@ -215,7 +259,7 @@ async function executeOnChain(methodName, args, senderAddress) {
     signer: null,
     mldsaSigner: null,
     refundTo: senderAddress,
-    maximumAllowedSatToSpend: 10_000_000n, // 0.1 BTC max spend cap
+    maximumAllowedSatToSpend: 0n, // no BTC sent to contract — collateral is HODL tokens
     network: getNetworkConfig(),
   });
 

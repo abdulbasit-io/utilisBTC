@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useWallet } from '../context/WalletContext';
-import { fundLoan } from '../utils/lendingEngine';
+import { fundLoan, updateOnChainLoanStatus } from '../utils/lendingEngine';
 import { fundLoanOnChain } from '../utils/contractService';
 import { formatBTC, formatUSDT, formatPercent, formatUSD } from '../utils/formatters';
 import { MOCK_BTC_PRICE_USD, PLATFORM_FEE_RATE } from '../utils/constants';
@@ -25,6 +25,11 @@ export default function LendModal({ loan, onClose, onFunded, chainStatus }) {
       // Always try on-chain first when OPWallet is connected
       if (isRealWallet) {
         await fundLoanOnChain(address, loan.id);
+        // Update local record so dashboard reflects the funded status immediately
+        updateOnChainLoanStatus(loan.id, 'active', {
+          lender: address,
+          fundedAt: new Date().toISOString(),
+        });
         onFunded?.();
         onClose();
         return;

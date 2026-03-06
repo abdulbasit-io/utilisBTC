@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useWallet } from '../context/WalletContext';
 import {
   getAvailableLoans,
@@ -24,6 +24,8 @@ export default function LenderDashboard() {
   const [tab, setTab] = useState('marketplace');
   const [chainStatus, setChainStatus] = useState('checking');
   const [txPending, setTxPending] = useState(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const refreshTimerRef = useRef(null);
 
   const loadData = useCallback(async () => {
     // Only seed demo data for non-real wallets
@@ -72,6 +74,24 @@ export default function LenderDashboard() {
     if (isRealWallet) checkChain();
     else setChainStatus('offline');
   }, [isRealWallet]);
+
+  // Refresh function — reloads local + on-chain data
+  const refresh = useCallback(async () => {
+    if (isRefreshing) return;
+    setIsRefreshing(true);
+    try {
+      await loadData();
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [isRefreshing, loadData]);
+
+  // Auto-refresh every 30s when chain is online
+  useEffect(() => {
+    if (chainStatus !== 'online' || !isRealWallet) return;
+    refreshTimerRef.current = setInterval(() => { refresh(); }, 30_000);
+    return () => clearInterval(refreshTimerRef.current);
+  }, [chainStatus, isRealWallet, refresh]);
 
   const handleLiquidate = async (loanId) => {
     try {
@@ -139,6 +159,16 @@ export default function LenderDashboard() {
               )}
             </p>
           </div>
+          {isRealWallet && (
+            <button
+              className="btn btn-secondary"
+              onClick={refresh}
+              disabled={isRefreshing}
+              title="Refresh from chain"
+            >
+              {isRefreshing ? '⟳' : '↻'} Refresh
+            </button>
+          )}
         </div>
 
         {/* Contract info */}

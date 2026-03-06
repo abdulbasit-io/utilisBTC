@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useWallet } from '../context/WalletContext';
-import { createLoanRequest } from '../utils/lendingEngine';
+import { createLoanRequest, saveOnChainLoan } from '../utils/lendingEngine';
 import { createLoanOnChain } from '../utils/contractService';
 import { formatUSD, formatUSDT, formatPercent, calcInterest } from '../utils/formatters';
 import { MIN_COLLATERAL_RATIO, PLATFORM_FEE_RATE, MOCK_BTC_PRICE_USD } from '../utils/constants';
@@ -52,7 +52,16 @@ export default function CreateLoanModal({ onClose, onCreated, chainStatus }) {
         const collateralSats = Math.round(btcVal * 1e8);
         const loanSats = Math.round(usdtVal * 1e8);
         const rateBps = Math.round(rateVal * 10000);
-        await createLoanOnChain(address, collateralSats, loanSats, durationVal, rateBps);
+        const txHash = await createLoanOnChain(address, collateralSats, loanSats, durationVal, rateBps);
+        // Save optimistic local record so dashboard reflects immediately
+        saveOnChainLoan({
+          borrower: address,
+          btcCollateral: btcVal,
+          usdtAmount: usdtVal,
+          durationDays: durationVal,
+          interestRate: rateVal,
+          txHash,
+        });
         onCreated?.();
         onClose();
         return;

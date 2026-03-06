@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useWallet } from '../context/WalletContext';
 import { getBorrowerLoans, repayLoan, cancelLoan, seedDemoData } from '../utils/lendingEngine';
 import { formatBTC, formatUSDT, formatUSD } from '../utils/formatters';
@@ -7,6 +7,7 @@ import {
   isContractAvailable,
   getContractAddress,
   getOnChainLoanCount,
+  getAllOnChainLoans,
   repayLoanOnChain,
   cancelLoanOnChain,
 } from '../utils/contractService';
@@ -31,7 +32,7 @@ export default function BorrowerDashboard() {
 
   useEffect(() => { loadLoans(); }, [loadLoans]);
 
-  // Check contract availability on mount
+  // Check contract availability then immediately load on-chain loans
   useEffect(() => {
     async function checkChain() {
       try {
@@ -50,6 +51,50 @@ export default function BorrowerDashboard() {
   }, [isRealWallet]);
 
   const [txPending, setTxPending] = useState(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const refreshTimerRef = useRef(null);
+
+  // Merge on-chain loans into local view — both locally-tracked and freshly fetched on-chain
+  const loadOnChainLoans = useCallback(async () => {
+    if (!isRealWallet || chainStatus !== 'online') return;
+    try {
+      const onChainLoans = await getAllOnChainLoans();
+      if (onChainLoans.length > 0) {
+        setLoans(prev => {
+          const localIds = new Set(prev.map(l => String(l.id)));
+          const newOnChain = onChainLoans.filter(l => !localIds.has(String(l.id)));
+          return newOnChain.length > 0 ? [...newOnChain, ...prev] : prev;
+        });
+        setOnChainLoanCount(onChainLoans.length);
+      }
+    } catch (e) {
+      console.warn('On-chain loan refresh failed:', e);
+    }
+  }, [isRealWallet, chainStatus]);
+
+  // Load on-chain loans once chain status is confirmed online
+  useEffect(() => {
+    if (chainStatus === 'online') loadOnChainLoans();
+  }, [chainStatus, loadOnChainLoans]);
+
+  const refresh = useCallback(async () => {
+    if (isRefreshing) return;
+    setIsRefreshing(true);
+    try {
+      loadLoans();
+      await loadOnChainLoans();
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [isRefreshing, loadLoans, loadOnChainLoans]);
+
+  // Auto-refresh every 30s when chain is online (transactions take time to confirm)
+  useEffect(() => {
+    if (chainStatus !== 'online' || !isRealWallet) return;
+    refreshTimerRef.current = setInterval(() => { refresh(); }, 30_000);
+    return () => clearInterval(refreshTimerRef.current);
+  }, [chainStatus, isRealWallet, refresh]);
+
 
   const handleRepay = async (loan) => {
     // On-chain loan: go to chain. Local loan: use simulation.
@@ -137,9 +182,21 @@ export default function BorrowerDashboard() {
               )}
             </p>
           </div>
-          <button className="btn btn-primary btn-lg" onClick={() => setShowCreateModal(true)}>
-            <span>+</span> New Loan Request
-          </button>
+          <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+            {isRealWallet && (
+              <button
+                className="btn btn-secondary"
+                onClick={refresh}
+                disabled={isRefreshing}
+                title="Refresh from chain"
+              >
+                {isRefreshing ? '⟳' : '↻'} Refresh
+              </button>
+            )}
+            <button className="btn btn-primary btn-lg" onClick={() => setShowCreateModal(true)}>
+              <span>+</span> New Loan Request
+            </button>
+          </div>
         </div>
 
         {/* On-chain contract info */}
